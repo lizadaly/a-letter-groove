@@ -1,5 +1,3 @@
-// const url = 'https://iiif.lib.harvard.edu/manifests/drs:5735821'
-
 
 const main = document.querySelector('main')
 const form = main.querySelector('form')
@@ -18,8 +16,9 @@ const bookRender = async (url) => {
   console.log(manifest)
 
   for (const item of manifest.sequences[0].canvases) {
+    if (i > 100 && i <= 150) {
 
-    if (i > 51 && i < 63) {
+      setTimeout(() => {
       const imageUrl = item.images[0].resource["@id"]
       const {
         width,
@@ -35,7 +34,7 @@ const bookRender = async (url) => {
       })
 
       const image = new Image(width, height)
-      image.crossOrigin = `Anonymous`
+      image.crossOrigin = 'Anonymous'
       image.src = imageUrl
 
       const render = async () => {
@@ -49,6 +48,12 @@ const bookRender = async (url) => {
           data
         } = await worker.recognize(imageUrl)
 
+
+        // Only draw the image if there are at least some OCR detections
+        if (data.words.length < 200) {
+          canvas.parentNode.removeChild(canvas)
+          return
+        }
         ctx.drawImage(image, 0, 0)
 
         for (const word of data.words) {
@@ -56,32 +61,35 @@ const bookRender = async (url) => {
             bbox
           } = word
 
+          const boxwidth = bbox.x1 - bbox.x0
+          const boxheight = bbox.y1 - bbox.y0
+          const boxarea = boxwidth * boxheight
 
           ctx.save()
           ctx.globalCompositeOperation = 'destination-out'
-          ctx.rect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0)
+          ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
           ctx.fill()
           ctx.restore()
 
           ctx.globalCompositeOperation = 'source-over'
-
           ctx.strokeStyle = 'black'
-          ctx.strokeRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0)
+          ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
 
         }
         await worker.terminate()
 
       }
-      if (i % 2 == 0) {
-        console.log("rendering with cut")
-        image.onload = render
+      image.onload = render
 
-      } else {
-        image.onload = () => ctx.drawImage(image, 0, 0)
+      // if (i % 2 == 0) {
+      //   image.onload = render
 
-      }
+      // } else {
+      //   image.onload = () => ctx.drawImage(image, 0, 0)
+      // }
       main.append(canvas)
 
+      }, 300)
     }
     i += 1
   }
