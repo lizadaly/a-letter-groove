@@ -21,7 +21,21 @@ input[type=text] {
   padding: 10px;
 
 }
-
+#button-holder {
+  position: fixed;
+  bottom: 0;
+  text-align: center;
+  width: 100%;
+  padding: 20px;
+}
+#button-holder button {
+  margin: auto;
+  display: block;
+  padding: 1rem;
+}
+.hidden {
+  display: none !important;
+}
 canvas {
   position: absolute;
   top: 0;

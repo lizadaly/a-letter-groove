@@ -92,5 +92,10 @@ const bookRender = async (url) => {
       }, 300)
     }
     i += 1
+    document.querySelector('button').classList.remove('hidden')
   }
+  document.querySelector('button').addEventListener('click', () => {
+    const canvas = main.querySelector('canvas:last-of-type')
+    canvas.parentNode.removeChild(canvas)
+  })
 }
