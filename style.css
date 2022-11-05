@@ -1,7 +1,31 @@
 body {
-  background: red;
+  font-family: Helvetica, Arial, sans-serif;
+  color: gray;
 }
+h1 {
+  padding: 25vh 0 2rem 0;
+  font-size: 30px;
+  margin: auto;
+  text-align: center;
+  font-weight: normal;
+}
+input {
+  border: 1px solid gray;
+  font-size: 30px;
+}
+input[type=text] {
+  display: block;
+  margin: auto;
+  text-align: center;
+  color: gray;
+  padding: 10px;
+
+}
+
 canvas {
   position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
+  max-width: 100%;
 }
