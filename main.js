@@ -4,13 +4,14 @@ const req = await fetch(url)
 const manifest = await req.json()
 console.log(manifest)
 
-let i = 0
+
 const main = document.querySelector('main')
 
 
-
+let i = 0
 for (const item of manifest.sequences[0].canvases) {
-  if (i > 51 && i < 55) {
+
+  if (i > 52 && i < 60) {
     const imageUrl = item.images[0].resource["@id"]
     const {
       width,
@@ -21,13 +22,15 @@ for (const item of manifest.sequences[0].canvases) {
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
-    const ctx = canvas.getContext('2d', {willReadFrequently: true})
+    const ctx = canvas.getContext('2d', {
+      willReadFrequently: true
+    })
 
     const image = new Image(width, height)
     image.crossOrigin = `Anonymous`
     image.src = imageUrl
-    image.onload = async () => {
 
+    const render = async () => {
 
       const worker = Tesseract.createWorker()
       await worker.load()
@@ -38,48 +41,64 @@ for (const item of manifest.sequences[0].canvases) {
         data
       } = await worker.recognize(imageUrl)
 
-      console.log(data)
-
       ctx.drawImage(image, 0, 0)
-      image.style.display = 'none'
 
       for (const word of data.words) {
         const {
           bbox
         } = word
-        ctx.fillStyle = 'white'
-
-        window.requestAnimationFrame(() => {
-          const idata = ctx.getImageData(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
-
-          // Create a throwaway canvas to do data transformations on
-          const c = document.createElement('canvas')
-          c.width = bbox.x1 - bbox.x0
-          c.height = bbox.y1 - bbox.y0
 
 
-          const cctx = c.getContext('2d')
+        ctx.save()
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.rect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0)
+        ctx.fill()
+        ctx.restore()
 
-          cctx.putImageData(idata, 0, 0)
-          const im = new Image(c.width, c.height)
-          im.src = c.toDataURL()
-          im.onload = () => {
-            const nc = drawRotated(im, 45)
-            ctx.drawImage(nc, bbox.x0, bbox.y0)
-          }
+        ctx.globalCompositeOperation = 'source-over'
 
-        })
+        ctx.strokeStyle = 'black'
+        ctx.strokeRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0)
+
+        // window.requestAnimationFrame(() => {
+        //   const idata = ctx.getImageData(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
+
+        //   // Create a throwaway canvas to do data transformations on
+        //   const c = document.createElement('canvas')
+        //   c.width = bbox.x1 - bbox.x0
+        //   c.height = bbox.y1 - bbox.y0
+
+
+        //   const cctx = c.getContext('2d')
+
+        //   cctx.putImageData(idata, 0, 0)
+        //   const im = new Image(c.width, c.height)
+        //   im.src = c.toDataURL()
+        //   im.onload = () => {
+        //     const nc = drawRotated(im, 45)
+        //     ctx.drawImage(nc, bbox.x0, bbox.y0)
+        //   }
+
+        // })
       }
       await worker.terminate()
 
+
     }
+    console.log(i)
+    if (i % 2 != 0) {
+      console.log("rendering with cut")
+      image.onload = render
 
+    }
+    else {
+      image.onload = () => ctx.drawImage(image, 0, 0)
 
-
+    }
     main.append(canvas)
 
   }
-  i++
+  i += 1
 }
 
 
