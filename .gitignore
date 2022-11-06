@@ -102,3 +102,10 @@ dist
 
 # TernJS port file
 .tern-port
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.vscode 

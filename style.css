@@ -9,6 +9,18 @@ h1 {
   text-align: center;
   font-weight: normal;
 }
+p {
+  text-align: center;
+  margin: auto;
+  font-size: 20px;
+  padding: 20px;
+}
+small {
+  text-align: center;
+  margin: auto;
+  padding: 20px;
+  display: block;
+}
 input {
   border: 1px solid gray;
   font-size: 30px;
@@ -21,25 +33,23 @@ input[type=text] {
   padding: 10px;
 
 }
-#button-holder {
-  position: fixed;
-  bottom: 0;
-  text-align: center;
-  width: 100%;
-  padding: 20px;
-}
-#button-holder button {
-  margin: auto;
-  display: block;
+button {
+  position: absolute;
   padding: 1rem;
+  /* opacity: 0; Use this when running with Playwright to keep the button out of the screenshot */
 }
 .hidden {
   display: none !important;
 }
 canvas {
   position: absolute;
+
+  /* These settings are best for screenshots
   top: 0;
   left: 0;
   right: 0;
-  max-width: 100%;
+  */
+
+  /* Disable this for screenshots */
+  max-width: 1200px;
 }

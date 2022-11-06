@@ -1,4 +1,7 @@
 const BATCH_SIZE = 20
+const MIN_WORDS_FOUND = 20
+const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
+const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
 
 let url, lastStart
 
@@ -10,8 +13,6 @@ main.querySelector('form').addEventListener('submit', (e) => {
   lastStart = 0
   bookRender(url, 0)
 })
-
-let i = 0
 
 const bookRender = async (url, start) => {
   document.querySelector('form').style.display = 'none'
@@ -29,8 +30,8 @@ const bookRender = async (url, start) => {
       } = item.images[0].resource
 
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
+      canvas.width = width || 1600
+      canvas.height = height || 2000
       const ctx = canvas.getContext('2d', {
         willReadFrequently: true
       })
@@ -40,7 +41,7 @@ const bookRender = async (url, start) => {
       image.src = imageUrl
 
       image.addEventListener('load', async () => {
-        console.log("rendering ocr...")
+        console.log(`OCRing ${imageUrl}...`)
         const worker = Tesseract.createWorker()
         await worker.load()
         await worker.loadLanguage('eng')
@@ -51,38 +52,47 @@ const bookRender = async (url, start) => {
         } = await worker.recognize(imageUrl)
 
         worker.terminate()
+        // console.log(`Got ${data.words.length} words for this page...`)
 
         // Only draw the image if there are at least some OCR detections
-        if (data.words.length > 200) {
+        if (data.words.length > MIN_WORDS_FOUND) {
 
           ctx.drawImage(image, 0, 0)
 
-          for (const word of data.words) {
-            const {
-              bbox
-            } = word
+          const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
+          if (cutFrequency === 1) {
 
-            const boxwidth = bbox.x1 - bbox.x0
-            const boxheight = bbox.y1 - bbox.y0
+            for (const word of data.words) {
+              const {
+                bbox
+              } = word
 
-            ctx.save()
-            ctx.globalCompositeOperation = 'destination-out'
-            ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
-            ctx.fill()
-            ctx.restore()
+              const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
 
-            ctx.globalCompositeOperation = 'source-over'
-            ctx.strokeStyle = 'black'
-            ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
+              if (wordFrequency === 1) {
+
+                const boxwidth = bbox.x1 - bbox.x0
+                const boxheight = bbox.y1 - bbox.y0
+
+                ctx.save()
+                ctx.globalCompositeOperation = 'destination-out'
+                ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
+                ctx.fill()
+                ctx.restore()
+
+                ctx.globalCompositeOperation = 'source-over'
+                ctx.strokeStyle = 'black'
+                ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
+
+
+              }
+            }
           }
           main.insertBefore(canvas, main.firstChild)
           document.querySelector('button').classList.remove('hidden')
         }
       })
-
     }, 300)
-
-    i += 1
   }
 }
 
