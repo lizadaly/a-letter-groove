@@ -108,5 +108,8 @@ dist
 /test-results/
 /playwright-report/
 /playwright/.cache/
-.vscode 
+.vscode
 output
+
+# Don't commit PDF output as it tends to be too large
+*.pdf
