@@ -4,7 +4,9 @@ A project for NaNoGenMo 2022 to produce cut pages in the style of artists' books
 
 Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF manifest</a> pointing at a series of scanned book pages, produce a new book that cuts out words revealing the pages beneath. (IIIF is an API and data format for describing image sequences for use in academia and research, and can be applied to individual documents, maps, books, or ephemera.)
 
-![Life of Samuel Johnson cut up](examples/the-life-of-samuel-johnson-6.webp){:width="200px"}
+[<img src="examples/the-life-of-samuel-johnson-6.webp" width="200">](examples/the-life-of-samuel-johnson-6.webp)
+
+![Life of Samuel Johnson cut up](examples/the-life-of-samuel-johnson-6.webp)
 ![Page screenshot](examples/screenshot-16.webp)
 ![Large bird painting with intersecting text](examples/menagerie1.webp)
 ![Flowers painting with intersecting text](examples/flowers1.webp)
