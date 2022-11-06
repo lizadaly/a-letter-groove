@@ -7,7 +7,7 @@ Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF man
 [<img src="examples/screenshot-16.png" alt="Abstract cut up image" width="300">](examples/screenshot-16.png) [<img src="examples/dickenson1.png" alt="Blank squares cut out from text with image visible underneath" width="300">](examples/dickenson1.png) [<img src="examples/menagerie1.png" alt="Large bird painting with intersecting text" width="300">](examples/menagerie1.png) [<img src="examples/the-life-of-samuel-johnson-6.png" alt="Drawing of a castle with visible text cutting through" width="300">](examples/the-life-of-samuel-johnson-6.png) [<img src="examples/flowers1.png" alt="Flowers painting with intersecting text" width="300">](examples/flowers1.png) [<img src="examples/music2.png" alt="Music score very cut up" width="300">](examples/music2.png)
 
 
-[The webapp](https://lizadaly.github.io/a-letter-groove/) can be used directly to view page output. (I have only tried this with Harvard's IIIF content and server so your mileage may vary with other sources.)
+[The webapp](https://lizadaly.github.io/a-letter-groove/) can be used to view sample page output. It's preconfigured with an interesting book, or you can paste your own IIIF manifest. (I have only tried this with Harvard's IIIF content and server so your mileage may vary with other sources.)
 
 The "official" NaNoGenMo entry is 99 pages produced from [Boswell's Life of Johnson](https://lizadaly.com/projects/a-letter-groove/boswells-life-of-johnson-sm.pdf) (26MB PDF). <i>Boswell, James, 1740-1795. Boswell's Life of Johnson, extra-illustrated, 1464-1897. MS Hyde 76, vol. 2, pt. 1. Houghton Library, Harvard University, Cambridge Mass.</i>
 
