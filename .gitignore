@@ -109,3 +109,4 @@ dist
 /playwright-report/
 /playwright/.cache/
 .vscode 
+output

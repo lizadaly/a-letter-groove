@@ -1,5 +1,5 @@
 const BATCH_SIZE = 20
-const MIN_WORDS_FOUND = 20
+const MIN_WORDS_FOUND = 100
 const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
 const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
 

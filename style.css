@@ -36,7 +36,8 @@ input[type=text] {
 button {
   position: absolute;
   padding: 1rem;
-  /* opacity: 0; Use this when running with Playwright to keep the button out of the screenshot */
+  opacity: 0;
+
 }
 .hidden {
   display: none !important;
@@ -44,12 +45,11 @@ button {
 canvas {
   position: absolute;
 
-  /* These settings are best for screenshots
+  /* These settings are best for screenshots */
   top: 0;
   left: 0;
   right: 0;
-  */
 
   /* Disable this for screenshots */
-  max-width: 1200px;
+  /*  max-width: 1200px; */
 }
