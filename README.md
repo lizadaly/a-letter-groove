@@ -47,4 +47,4 @@ A large list of sample output is in `examples/`.
 [<img src="examples/screenshot-4.png">](examples/screenshot-4.png)
 [<img src="examples/the-life-of-samuel-johnson-5.png">](examples/the-life-of-samuel-johnson-4.png)
 [<img src="examples/lettie2.png">](examples/lettie2.png)
-[<img src="examples/the-life-of-samuel-johnson35.png">](examples/the-life-of-samuel-johnson-3.png)
+[<img src="examples/the-life-of-samuel-johnson-3.png">](examples/the-life-of-samuel-johnson-3.png)
