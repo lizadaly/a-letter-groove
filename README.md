@@ -1,11 +1,21 @@
 # A Letter Groove
 
-Given a URL of an IIIF manifest pointing at a series of scanned book pages, produce a new book that cuts out words revealing the pages beneath.
+A project for NaNoGenMo 2022 to produce cut pages in the style of artists' books.
+
+Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF manifest</a> pointing at a series of scanned book pages, produce a new book that cuts out words revealing the pages beneath. (IIIF is an API and data format for describing image sequences for use in academia and research, and can be applied to individual documents, maps, books, or ephemera.)
+
+![examples/the-life-of-samuel-johnson-6.webp]
+![examples/screenshot-16.webp]
+![examples/menagerie1.webp]
+![examples/flowers1.webp]
+![examples/dickenson1.webp]
+
+The webapp can be used directly to view page output at https://lizadaly.github.io/a-letter-groove/. I have only tried this with Harvard's IIIF content and server so your mileage may vary with other sources.
+
+The "official" NaNoGenMo entry is 99 pages produced from [Boswell's Life of Johnson](https://lizadaly.com/projects/a-letter-groove/boswells-life-of-johnson.pdf) (307MB PDF). <i>Boswell, James, 1740-1795. Boswell's Life of Johnson, extra-illustrated, 1464-1897. MS Hyde 76, vol. 2, pt. 1. Houghton Library, Harvard University, Cambridge Mass.</i>
 
 
-
-
-The webapp can be used directly to view page output at https://lizadaly.github.io/a-letter-groove/.
+The title comes from output produced when cutting up an edition of [Emily Dickenson's poetry](https://lizadaly.com/projects/a-letter-groove/emily-dickenson-poems.pdf) (185MB PDF).
 
 # Local usage
 
