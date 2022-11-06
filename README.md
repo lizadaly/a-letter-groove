@@ -18,7 +18,8 @@ The title comes from output produced when cutting up an edition of [Emily Dicken
 
 You probably don't want to bother!
 
-To generate PDF book output, you'll need to install and run it yourself. It will install Vite to run the local webserver, and Playwright to run the browser automation to walk through an entire book. TesseractJS is imported directly from the HTML.
+To generate PDF book output, you'll need to install the project. It will use [Vite](https://vitejs.dev/) to run the local webserver, and [Playwright](https://playwright.dev/) to run the browser automation to walk through an entire book and save each page as a screenshot.
+[TesseractJS](https://tesseract.projectnaptha.com/) OCR is used to identify the words on each page. You can tune the frequency of words and pages transformed in `main.js`.
 
 ```bash
 npm install
