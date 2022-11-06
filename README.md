@@ -4,20 +4,23 @@ A project for NaNoGenMo 2022 to produce cut pages in the style of artists' books
 
 Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF manifest</a> pointing at a series of scanned book pages, produce a new book that cuts out words revealing the pages beneath. (IIIF is an API and data format for describing image sequences for use in academia and research, and can be applied to individual documents, maps, books, or ephemera.)
 
-[<img src="examples/the-life-of-samuel-johnson-6.webp" width="200">](examples/the-life-of-samuel-johnson-6.webp)
+[<img src="examples/the-life-of-samuel-johnson-6.webp" alt="Drawing of a castle with visible text cutting through" width="400">](examples/the-life-of-samuel-johnson-6.webp)
 
-![Life of Samuel Johnson cut up](examples/the-life-of-samuel-johnson-6.webp)
-![Page screenshot](examples/screenshot-16.webp)
-![Large bird painting with intersecting text](examples/menagerie1.webp)
-![Flowers painting with intersecting text](examples/flowers1.webp)
-![Blank squares cut out from text with image visible underneath](examples/dickenson1.webp)
+[<img src="examples/screenshot-16.webp" alt="Abstract cut up image width="400">](examples/screenshot-16.webp)
 
-The webapp can be used directly to view page output at https://lizadaly.github.io/a-letter-groove/. I have only tried this with Harvard's IIIF content and server so your mileage may vary with other sources.
+[<img src="examples/menagerie1.webp" alt="Large bird painting with intersecting text" width="400">](examples/menagerie1.webp)
 
-The "official" NaNoGenMo entry is 99 pages produced from [Boswell's Life of Johnson](https://lizadaly.com/projects/a-letter-groove/boswells-life-of-johnson.pdf) (307MB PDF). <i>Boswell, James, 1740-1795. Boswell's Life of Johnson, extra-illustrated, 1464-1897. MS Hyde 76, vol. 2, pt. 1. Houghton Library, Harvard University, Cambridge Mass.</i>
+[<img src="examples/flowers1.webp" alt="Flowers painting with intersecting text" width="400">](examples/flowers1.webp)
+
+[<img src="examples/dickenson1.webp" alt="Blank squares cut out from text with image visible underneath" width="400">](examples/dickenson1.webp)
 
 
-The title comes from output produced when cutting up an edition of [Emily Dickenson's poetry](https://lizadaly.com/projects/a-letter-groove/emily-dickenson-poems.pdf) (185MB PDF).
+[The webapp](https://lizadaly.github.io/a-letter-groove/) can be used directly to view page output. (I have only tried this with Harvard's IIIF content and server so your mileage may vary with other sources.)
+
+The "official" NaNoGenMo entry is 99 pages produced from [Boswell's Life of Johnson](https://lizadaly.com/projects/a-letter-groove/boswells-life-of-johnson-sm.pdf) (26MB PDF). <i>Boswell, James, 1740-1795. Boswell's Life of Johnson, extra-illustrated, 1464-1897. MS Hyde 76, vol. 2, pt. 1. Houghton Library, Harvard University, Cambridge Mass.</i>
+
+
+The title comes from output produced when cutting up an edition of [Emily Dickenson's poetry](https://lizadaly.com/projects/a-letter-groove/emily-dickenson-poems-sm.pdf) (11MB PDF).
 
 # Local usage
 
