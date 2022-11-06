@@ -6,9 +6,7 @@ Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF man
 
 [<img src="examples/the-life-of-samuel-johnson-6.webp" alt="Drawing of a castle with visible text cutting through" width="300">](examples/the-life-of-samuel-johnson-6.webp)
 
-[<img src="examples/screenshot-16.webp" alt="Abstract cut up image" width="300">](examples/screenshot-16.webp)
-
-[<img src="examples/menagerie1.webp" alt="Large bird painting with intersecting text" width="300">](examples/menagerie1.webp)
+[<img src="examples/screenshot-16.webp" alt="Abstract cut up image" width="300">](examples/screenshot-16.webp)[<img src="examples/menagerie1.webp" alt="Large bird painting with intersecting text" width="300">](examples/menagerie1.webp)
 
 [<img src="examples/flowers1.webp" alt="Flowers painting with intersecting text" width="300">](examples/flowers1.webp)
 
