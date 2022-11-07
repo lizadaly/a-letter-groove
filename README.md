@@ -1,6 +1,6 @@
 # A Letter Groove
 
-A project for NaNoGenMo 2022 to produce cut pages in the style of artists' books.
+A project for [NaNoGenMo 2022](https://github.com/NaNoGenMo/2022/) to produce cut pages in the style of artists' books.
 
 Given a URL of an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF manifest</a> pointing at a series of scanned book pages, produce a new book that cuts out words revealing the pages beneath. (IIIF is an API and data format for describing image sequences for use in academia and research, and can be applied to individual documents, maps, books, or ephemera.)
 
