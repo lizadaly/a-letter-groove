@@ -1,6 +1,4 @@
-const {
-  test
-} = require('@playwright/test');
+import { test } from '@playwright/test'
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -8,7 +6,7 @@ test('generate snapshots', async ({
   page
 }) => {
 
-  await page.goto('http://localhost:5174/');
+  await page.goto('http://localhost:5173/');
 
   // Sample IIIF manifests to try:
 

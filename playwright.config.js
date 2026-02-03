@@ -1,12 +1,5 @@
 // @ts-check
-const { devices } = require('@playwright/test');
-
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
-
+import { devices } from '@playwright/test'
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -14,6 +7,7 @@ const { devices } = require('@playwright/test');
  */
 const config = {
   testDir: './tests',
+  testMatch: '**/*.spec.js',
   /* Maximum time one test can run for. */
   timeout: 30 * 100000,
   expect: {
@@ -57,8 +51,9 @@ const config = {
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'npm run dev',
-    port: 5174,
+    port: 5173,
+    reuseExistingServer: true,
   },
-};
+}
 
-module.exports = config;
+export default config
