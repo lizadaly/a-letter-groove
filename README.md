@@ -1,6 +1,6 @@
 # A Letter Groove
 
-Cut-page artists' books from digitized archives.
+Produce images like cut-page artists' books from digitized archives.
 
 [<img src="examples/screenshot-16.png" alt="Abstract cut up image" height="400">](examples/screenshot-16.png) [<img src="examples/dickenson1.png" alt="Blank squares cut out from text with image visible underneath" height="400">](examples/dickenson1.png) [<img src="examples/menagerie1.png" alt="Large bird painting with intersecting text" height="400">](examples/menagerie1.png) [<img src="examples/the-life-of-samuel-johnson-6.png" alt="Drawing of a castle with visible text cutting through" height="400">](examples/the-life-of-samuel-johnson-6.png) [<img src="examples/flowers1.png" width="300" alt="Flowers painting with intersecting text" height="400">](examples/flowers1.png)[<img src="examples/the-life-of-samuel-johnson-2.png" alt="Sketch of a man with overlaid text" height="400">](examples/the-life-of-samuel-johnson-2.png)
 
@@ -16,10 +16,6 @@ The result is a layered visual composition in the style of cut-page artists' boo
 
 **[Launch the app](https://lizadaly.github.io/a-letter-groove/)** — includes example books to get started.
 
-- **Navigation**: Use the Previous/Next buttons or arrow keys to move through pages
-- **Shareable URLs**: Copy the URL to share a specific book with others
-- **Download**: Save the current composite image as a PNG
-
 IIIF (International Image Interoperability Framework) is an API for describing image sequences, used by libraries, museums, and archives worldwide. Both IIIF Presentation API v2 and v3 manifests are supported.
 
 ## More examples
@@ -34,6 +30,5 @@ IIIF (International Image Interoperability Framework) is an API for describing i
 
 ## Background
 
-A [NaNoGenMo](https://nanogenmo.github.io/) 2022 project. The title comes from output produced when cutting up an edition of Emily Dickinson's poetry.
+Originally a [NaNoGenMo](https://nanogenmo.github.io/) 2022 project with a simpler interface. The title comes from output produced when cutting up an edition of Emily Dickinson's poetry.
 
-By [Liza Daly](https://lizadaly.com).
