@@ -9,14 +9,47 @@ let imageMaxWidth = 600 // Max width for fetched images (uses IIIF Image API)
 // Maps canvas -> { resource, cutBoxes, previewWidth, previewHeight }
 const canvasCutData = new WeakMap()
 
+// IIIF version detection and normalisation helpers
+const isV3Manifest = (manifest) => {
+  const context = manifest['@context']
+  if (Array.isArray(context)) {
+    return context.some(c => typeof c === 'string' && c.includes('/presentation/3'))
+  }
+  return typeof context === 'string' && context.includes('/presentation/3')
+}
+
+const getCanvases = (manifest) =>
+  isV3Manifest(manifest)
+    ? manifest.items
+    : manifest.sequences[0].canvases
+
+const getImageResource = (canvas, isV3) => {
+  const resource = isV3
+    ? canvas.items[0].items[0].body
+    : canvas.images[0].resource
+  // In v3, dimensions are on the canvas, not the resource
+  if (isV3 && !resource.width) {
+    resource.width = canvas.width
+    resource.height = canvas.height
+  }
+  return resource
+}
+
+const getServiceId = (service) => {
+  // v3 uses an array of services, v2 uses a single object
+  const svc = Array.isArray(service) ? service[0] : service
+  return svc?.id || svc?.['@id']
+}
+
 // Construct a sized image URL using IIIF Image API, or fall back to full URL
 const getImageUrl = (resource) => {
   const service = resource.service
-  if (service && service['@id']) {
+  const serviceId = service && getServiceId(service)
+  if (serviceId) {
     const size = imageMaxWidth === 'full' ? 'full' : `${imageMaxWidth},`
-    return `${service['@id']}/full/${size}/0/default.jpg`
+    return `${serviceId}/full/${size}/0/default.jpg`
   }
-  return resource['@id']
+  return resource.id || resource['@id']
 }
 
 const setImageMaxWidth = (width) => {
@@ -36,6 +69,8 @@ let totalManifestPages = 0
 
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
+const errorEl = document.querySelector('#error')
+const errorText = document.querySelector('#error-text')
 const browseNav = document.querySelector('#browse-nav')
 const pageCurrentEl = document.querySelector('.page-current')
 const pageTotalEl = document.querySelector('.page-total')
@@ -99,6 +134,16 @@ const hideLoading = () => {
   loadingEl.classList.add('hidden')
 }
 
+const showError = (message) => {
+  errorText.textContent = message
+  errorEl.classList.remove('hidden')
+  hideLoading()
+}
+
+const hideError = () => {
+  errorEl.classList.add('hidden')
+}
+
 const initScheduler = async () => {
   if (scheduler) return scheduler
   scheduler = Tesseract.createScheduler()
@@ -118,6 +163,7 @@ const form = document.querySelector('#manifest-form')
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault()
+  hideError()
   url = form['url'].value
   lastStart = 0
   const newUrl = new URL(window.location)
@@ -125,8 +171,13 @@ form.addEventListener('submit', async (e) => {
   window.history.replaceState({}, '', newUrl)
   splash.classList.add('hidden')
   showLoading('Initializing OCR...')
-  await initScheduler()
-  bookRender(url, 0)
+  try {
+    await initScheduler()
+    await bookRender(url, 0)
+  } catch (err) {
+    showError(`Failed to load manifest: ${err.message}`)
+    splash.classList.remove('hidden')
+  }
 })
 
 // Check for manifest URL parameter and auto-load
@@ -140,10 +191,21 @@ if (manifestParam) {
 const getManifest = async (url) => {
   if (manifestCache) return manifestCache
   const req = await fetch(url)
-  manifestCache = await req.json()
-  console.log(manifestCache)
-  totalManifestPages = manifestCache.sequences[0].canvases.length
-  return manifestCache
+  if (!req.ok) {
+    throw new Error(`HTTP ${req.status}: ${req.statusText}`)
+  }
+  const manifest = await req.json()
+  console.log(manifest)
+
+  // Validate required structure
+  const canvases = getCanvases(manifest)
+  if (!canvases || canvases.length === 0) {
+    throw new Error('No canvases found in manifest')
+  }
+
+  manifestCache = manifest
+  totalManifestPages = canvases.length
+  return manifest
 }
 
 const prefetchNextBatch = (manifestUrl, start) => {
@@ -153,12 +215,14 @@ const prefetchNextBatch = (manifestUrl, start) => {
   prefetchedCanvases = []
 
   getManifest(manifestUrl).then(manifest => {
-    const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
+    const allCanvases = getCanvases(manifest)
+    const canvases = allCanvases.slice(start, start + BATCH_SIZE)
     if (canvases.length === 0) {
       prefetchInProgress = false
       return
     }
 
+    const isV3 = isV3Manifest(manifest)
     console.log(`Prefetching batch starting from ${start}...`)
     let prefetchCompleted = 0
     const completedCanvases = new Array(canvases.length).fill(null)
@@ -167,7 +231,7 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
     canvases.forEach((item, itemIndex) => {
       setTimeout(() => {
-        const resource = item.images[0].resource
+        const resource = getImageResource(item, isV3)
         const imageUrl = getImageUrl(resource)
         const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
         const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
@@ -293,7 +357,9 @@ const bookRender = async (url, start, usePrefetched = false) => {
   }
 
   batchInProgress = true
-  const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
+  const allCanvases = getCanvases(manifest)
+  const canvases = allCanvases.slice(start, start + BATCH_SIZE)
+  const isV3 = isV3Manifest(manifest)
   const totalPages = canvases.length
   let pagesCompleted = 0
   const completedCanvases = new Array(canvases.length).fill(null)
@@ -303,7 +369,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
 
   canvases.forEach((item, itemIndex) => {
     setTimeout(() => {
-      const resource = item.images[0].resource
+      const resource = getImageResource(item, isV3)
       const imageUrl = getImageUrl(resource)
       const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
       const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
@@ -448,10 +514,11 @@ const revealPreviousPage = () => {
 // Get full-size image URL from IIIF resource
 const getFullSizeImageUrl = (resource) => {
   const service = resource.service
-  if (service && service['@id']) {
-    return `${service['@id']}/full/full/0/default.jpg`
+  const serviceId = service && getServiceId(service)
+  if (serviceId) {
+    return `${serviceId}/full/full/0/default.jpg`
   }
-  return resource['@id']
+  return resource.id || resource['@id']
 }
 
 // Load an image and return a promise
