@@ -22,6 +22,16 @@ import {
   shouldCutPage
 } from './src/cutout.js'
 
+// Extract words from Tesseract.js v7 blocks structure
+const extractWords = (data) => {
+  if (!data.blocks) return []
+  return data.blocks.flatMap(block =>
+    block.paragraphs?.flatMap(para =>
+      para.lines?.flatMap(line => line.words ?? []) ?? []
+    ) ?? []
+  )
+}
+
 // Create image service instance
 const imageService = createImageService()
 let imageMaxWidth = DEFAULT_IMAGE_MAX_WIDTH
@@ -122,10 +132,7 @@ const initScheduler = async () => {
   if (scheduler) return scheduler
   scheduler = Tesseract.createScheduler()
   for (let i = 0; i < SCHEDULER_WORKERS; i++) {
-    const worker = Tesseract.createWorker()
-    await worker.load()
-    await worker.loadLanguage('eng')
-    await worker.initialize('eng')
+    const worker = await Tesseract.createWorker('eng')
     scheduler.addWorker(worker)
   }
   return scheduler
@@ -228,7 +235,7 @@ const prefetchNextBatch = (manifestUrl, start) => {
         image.addEventListener('load', async () => {
           let data
           try {
-            const result = await scheduler.addJob('recognize', imageUrl)
+            const result = await scheduler.addJob('recognize', imageUrl, {}, { blocks: true })
             data = result.data
           } catch (err) {
             prefetchCompleted++
@@ -240,11 +247,12 @@ const prefetchNextBatch = (manifestUrl, start) => {
             return
           }
 
-          if (data.words.length > MIN_WORDS_FOUND) {
+          const words = extractWords(data)
+          if (words.length > MIN_WORDS_FOUND) {
             ctx.drawImage(image, 0, 0)
             let cutBoxes = []
             if (shouldCutPage(CUT_FREQUENCY)) {
-              cutBoxes = selectWordsForCutout(data.words, WORD_FREQUENCY)
+              cutBoxes = selectWordsForCutout(words, WORD_FREQUENCY)
               applyCutouts(ctx, cutBoxes)
             }
             canvasCutData.set(canvas, {
@@ -353,7 +361,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
         console.log(`OCRing ${imageUrl}...`)
         let data
         try {
-          const result = await scheduler.addJob('recognize', imageUrl)
+          const result = await scheduler.addJob('recognize', imageUrl, {}, { blocks: true })
           data = result.data
         } catch (err) {
           console.warn(`OCR failed for ${imageUrl}:`, err.message)
@@ -373,11 +381,12 @@ const bookRender = async (url, start, usePrefetched = false) => {
         updateStatus()
 
         // Only draw the image if there are at least some OCR detections
-        if (data.words.length > MIN_WORDS_FOUND) {
+        const words = extractWords(data)
+        if (words.length > MIN_WORDS_FOUND) {
           ctx.drawImage(image, 0, 0)
           let cutBoxes = []
           if (shouldCutPage(CUT_FREQUENCY)) {
-            cutBoxes = selectWordsForCutout(data.words, WORD_FREQUENCY)
+            cutBoxes = selectWordsForCutout(words, WORD_FREQUENCY)
             applyCutouts(ctx, cutBoxes)
           }
           canvasCutData.set(canvas, {
