@@ -11,9 +11,20 @@ let totalPages = 0
 let prefetchedCanvases = []
 let prefetchInProgress = false
 let manifestCache = null
+let currentPage = 0
+let totalManifestPages = 0
 
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
+const pageCounterEl = document.querySelector('#page-counter')
+const nextButton = document.querySelector('button')
+
+const updatePageCounter = () => {
+  if (totalManifestPages > 0) {
+    pageCounterEl.textContent = `Page ${currentPage} of ${totalManifestPages}`
+    pageCounterEl.classList.remove('hidden')
+  }
+}
 
 const showLoading = (text) => {
   loadingText.textContent = text
@@ -53,6 +64,7 @@ const getManifest = async (url) => {
   const req = await fetch(url)
   manifestCache = await req.json()
   console.log(manifestCache)
+  totalManifestPages = manifestCache.sequences[0].canvases.length
   return manifestCache
 }
 
@@ -266,6 +278,8 @@ const bookRender = async (url, start, usePrefetched = false) => {
           if (!firstCanvasRendered) {
             firstCanvasRendered = true
             hideLoading()
+            currentPage = 1
+            updatePageCounter()
             // Start prefetching next batch after first canvas renders
             if (!prefetchStarted) {
               prefetchStarted = true
@@ -278,9 +292,14 @@ const bookRender = async (url, start, usePrefetched = false) => {
   }
 }
 
-document.querySelector('button').addEventListener('click', () => {
+const revealNextPage = () => {
   const canvas = main.querySelector('canvas:last-of-type')
+  if (!canvas) return
+
   canvas.parentNode.removeChild(canvas)
+  currentPage++
+  updatePageCounter()
+
   const remaining = [...main.querySelectorAll('canvas')].length
   console.log(remaining)
 
@@ -290,5 +309,15 @@ document.querySelector('button').addEventListener('click', () => {
 
     console.log(`Triggering new batch starting from ${lastStart}${hasPrefetched ? ' (using prefetched)' : ''}`)
     bookRender(url, lastStart, hasPrefetched)
+  }
+}
+
+nextButton.addEventListener('click', revealNextPage)
+
+document.addEventListener('keydown', (e) => {
+  if (nextButton.classList.contains('hidden')) return
+  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    revealNextPage()
   }
 })
