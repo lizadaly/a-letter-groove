@@ -43,6 +43,7 @@ const pageReadyEl = document.querySelector('.page-ready')
 const prevButton = document.querySelector('#prev-btn')
 const nextButton = document.querySelector('#next-btn')
 const downloadButton = document.querySelector('#download-btn')
+const homeButton = document.querySelector('#home-btn')
 const statusProcessingEl = document.querySelector('#status-processing')
 
 // Track removed canvases for "previous" navigation
@@ -119,11 +120,22 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault()
   url = form['url'].value
   lastStart = 0
+  const newUrl = new URL(window.location)
+  newUrl.searchParams.set('manifest', url)
+  window.history.replaceState({}, '', newUrl)
   splash.classList.add('hidden')
   showLoading('Initializing OCR...')
   await initScheduler()
   bookRender(url, 0)
 })
+
+// Check for manifest URL parameter and auto-load
+const urlParams = new URLSearchParams(window.location.search)
+const manifestParam = urlParams.get('manifest')
+if (manifestParam) {
+  form['url'].value = manifestParam
+  form.dispatchEvent(new Event('submit'))
+}
 
 const getManifest = async (url) => {
   if (manifestCache) return manifestCache
@@ -560,6 +572,12 @@ const downloadCurrentImage = async () => {
 nextButton.addEventListener('click', revealNextPage)
 prevButton.addEventListener('click', revealPreviousPage)
 downloadButton.addEventListener('click', downloadCurrentImage)
+homeButton.addEventListener('click', (e) => {
+  e.preventDefault()
+  splash.classList.remove('hidden')
+  browseNav.classList.add('hidden')
+  document.querySelector('main').innerHTML = ''
+})
 
 document.addEventListener('keydown', (e) => {
   if (browseNav.classList.contains('hidden')) return
