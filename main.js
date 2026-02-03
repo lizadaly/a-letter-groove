@@ -14,7 +14,6 @@ let waitingForPrefetch = false
 let manifestCache = null
 let currentPage = 0
 let totalManifestPages = 0
-let maxCachedPages = 0
 
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
@@ -35,14 +34,20 @@ let currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
 let currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
 
 const updateStatus = () => {
-  const canvasCount = main.querySelectorAll('canvas').length
-  maxCachedPages = Math.max(maxCachedPages, canvasCount)
+  const canvasesInDom = main.querySelectorAll('canvas').length
+  const totalProcessed = canvasesInDom + removedCanvases.length
 
-  // Show max pages ready (only increases)
-  pageReadyEl.textContent = maxCachedPages > 0 ? `${maxCachedPages} ready` : ''
+  // Show total processed pages (viewable + already viewed)
+  pageReadyEl.textContent = totalProcessed > 0 ? `${totalProcessed} ready` : ''
+
+  // Disable next button if only one canvas left (nothing to reveal)
+  const atCacheBoundary = canvasesInDom <= 1
+  nextButton.disabled = atCacheBoundary
 
   // Show OCR or prefetch progress with current page number
-  if (currentOcrProgress.total > 0 && currentOcrProgress.completed < currentOcrProgress.total) {
+  if (atCacheBoundary && (prefetchInProgress || waitingForPrefetch)) {
+    statusProcessingEl.textContent = 'loading more pages...'
+  } else if (currentOcrProgress.total > 0 && currentOcrProgress.completed < currentOcrProgress.total) {
     const pageNum = currentOcrProgress.startPage + currentOcrProgress.completed + 1
     statusProcessingEl.textContent = `OCRing page ${pageNum}`
   } else if (prefetchInProgress && currentPrefetchProgress.total > 0) {
