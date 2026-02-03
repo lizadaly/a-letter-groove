@@ -3,6 +3,21 @@ const MIN_WORDS_FOUND = 0
 const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
 const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
 const SCHEDULER_WORKERS = 3
+let imageMaxWidth = 600 // Max width for fetched images (uses IIIF Image API)
+
+// Construct a sized image URL using IIIF Image API, or fall back to full URL
+const getImageUrl = (resource) => {
+  const service = resource.service
+  if (service && service['@id']) {
+    const size = imageMaxWidth === 'full' ? 'full' : `${imageMaxWidth},`
+    return `${service['@id']}/full/${size}/0/default.jpg`
+  }
+  return resource['@id']
+}
+
+const setImageMaxWidth = (width) => {
+  imageMaxWidth = width // number for max width, or 'full' for original size
+}
 
 let url, lastStart
 let scheduler = null
@@ -135,12 +150,14 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
     for (const item of canvases) {
       setTimeout(() => {
-        const imageUrl = item.images[0].resource["@id"]
-        const { width, height } = item.images[0].resource
+        const resource = item.images[0].resource
+        const imageUrl = getImageUrl(resource)
+        const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
+        const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
 
         const canvas = document.createElement('canvas')
-        canvas.width = width || 1600
-        canvas.height = height || 2000
+        canvas.width = width
+        canvas.height = height
         const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
         const image = new Image(width, height)
@@ -263,15 +280,14 @@ const bookRender = async (url, start, usePrefetched = false) => {
   for (const item of canvases) {
 
     setTimeout(() => {
-      const imageUrl = item.images[0].resource["@id"]
-      const {
-        width,
-        height
-      } = item.images[0].resource
+      const resource = item.images[0].resource
+      const imageUrl = getImageUrl(resource)
+      const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
+      const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
 
       const canvas = document.createElement('canvas')
-      canvas.width = width || 1600
-      canvas.height = height || 2000
+      canvas.width = width
+      canvas.height = height
       const ctx = canvas.getContext('2d', {
         willReadFrequently: true
       })
@@ -425,13 +441,28 @@ const revealPreviousPage = () => {
 }
 
 const downloadCurrentImage = () => {
-  const canvas = main.querySelector('canvas:last-of-type')
-  if (!canvas) return
+  const canvases = [...main.querySelectorAll('canvas')]
+  if (canvases.length === 0) return
 
-  // Create a temporary link and trigger download
+  // Get dimensions from the bottom canvas (they should all be the same size)
+  const bottomCanvas = canvases[0]
+  const { width, height } = bottomCanvas
+
+  // Create a composite canvas
+  const composite = document.createElement('canvas')
+  composite.width = width
+  composite.height = height
+  const ctx = composite.getContext('2d')
+
+  // Draw canvases from bottom to top (first in DOM is bottom of stack visually)
+  for (const canvas of canvases) {
+    ctx.drawImage(canvas, 0, 0)
+  }
+
+  // Download the composite
   const link = document.createElement('a')
   link.download = `a-letter-groove-page-${currentPage}.png`
-  link.href = canvas.toDataURL('image/png')
+  link.href = composite.toDataURL('image/png')
   link.click()
 }
 
