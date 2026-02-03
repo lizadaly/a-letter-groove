@@ -1,149 +1,34 @@
-const BATCH_SIZE = 20
-const MIN_WORDS_FOUND = 0
-const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
-const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
-const SCHEDULER_WORKERS = 3
-let imageMaxWidth = 600 // Max width for fetched images (uses IIIF Image API)
+import {
+  BATCH_SIZE,
+  MIN_WORDS_FOUND,
+  CUT_FREQUENCY,
+  WORD_FREQUENCY,
+  SCHEDULER_WORKERS,
+  DEFAULT_IMAGE_MAX_WIDTH
+} from './src/config.js'
+
+import {
+  isV3Manifest,
+  getCanvases,
+  getImageResource,
+  getManifestLabel
+} from './src/iiif.js'
+
+import { createImageService } from './src/image-service.js'
+
+import {
+  applyCutouts,
+  selectWordsForCutout,
+  shouldCutPage
+} from './src/cutout.js'
+
+// Create image service instance
+const imageService = createImageService()
+let imageMaxWidth = DEFAULT_IMAGE_MAX_WIDTH
 
 // Store cut data per canvas for full-size download
 // Maps canvas -> { resource, cutBoxes, previewWidth, previewHeight }
 const canvasCutData = new WeakMap()
-
-// IIIF version detection and normalisation helpers
-const isV3Manifest = (manifest) => {
-  const context = manifest['@context']
-  if (Array.isArray(context)) {
-    return context.some(c => typeof c === 'string' && c.includes('/presentation/3'))
-  }
-  return typeof context === 'string' && context.includes('/presentation/3')
-}
-
-const getCanvases = (manifest) =>
-  isV3Manifest(manifest)
-    ? manifest.items
-    : manifest.sequences[0].canvases
-
-const getImageResource = (canvas, isV3) => {
-  const resource = isV3
-    ? canvas.items[0].items[0].body
-    : canvas.images[0].resource
-  // In v3, dimensions are on the canvas, not the resource
-  if (isV3 && !resource.width) {
-    resource.width = canvas.width
-    resource.height = canvas.height
-  }
-  return resource
-}
-
-const getServiceId = (service) => {
-  // v3 uses an array of services, v2 uses a single object
-  const svc = Array.isArray(service) ? service[0] : service
-  return svc?.id || svc?.['@id']
-}
-
-// Extract a string label from manifest (v2 uses string, v3 uses language map)
-const getManifestLabel = (manifest) => {
-  const label = manifest?.label
-  if (!label) return null
-  if (typeof label === 'string') return label
-  // v3 language map: { "en": ["Title"], "none": ["Title"] }
-  const values = label.en || label.none || Object.values(label)[0]
-  return Array.isArray(values) ? values[0] : values
-}
-
-// Cache for info.json responses
-const infoJsonCache = new Map()
-
-// Fetch info.json for a service and return available sizes
-const fetchImageInfo = async (serviceId) => {
-  if (infoJsonCache.has(serviceId)) {
-    return infoJsonCache.get(serviceId)
-  }
-  try {
-    const response = await fetch(`${serviceId}/info.json`)
-    if (!response.ok) {
-      infoJsonCache.set(serviceId, null)
-      return null
-    }
-    const info = await response.json()
-    infoJsonCache.set(serviceId, info)
-    return info
-  } catch (err) {
-    console.warn(`Failed to fetch info.json for ${serviceId}:`, err.message)
-    infoJsonCache.set(serviceId, null)
-    return null
-  }
-}
-
-// Find the best pre-computed size closest to target width
-const findBestSize = (sizes, targetWidth) => {
-  if (!sizes || sizes.length === 0) return null
-
-  // Sort by width
-  const sorted = [...sizes].sort((a, b) => a.width - b.width)
-
-  // Find sizes at or above target
-  const atOrAbove = sorted.filter(s => s.width >= targetWidth)
-  if (atOrAbove.length > 0) {
-    // Return smallest size that's >= target
-    return atOrAbove[0]
-  }
-
-  // All sizes are below target, return the largest available
-  return sorted[sorted.length - 1]
-}
-
-// Construct a sized image URL using IIIF Image API, or fall back to full URL
-// Returns { url, width, height } with actual dimensions of the image
-const getImageUrlAndSize = async (resource) => {
-  const service = resource.service
-  const serviceId = service && getServiceId(service)
-  const fullWidth = resource.width
-  const fullHeight = resource.height
-
-  if (serviceId) {
-    if (imageMaxWidth === 'full') {
-      return {
-        url: `${serviceId}/full/full/0/default.jpg`,
-        width: fullWidth,
-        height: fullHeight
-      }
-    }
-
-    // Try to find a pre-computed size close to our target
-    const info = await fetchImageInfo(serviceId)
-    if (info?.sizes) {
-      const bestSize = findBestSize(info.sizes, imageMaxWidth)
-      if (bestSize) {
-        console.log(`Using pre-computed size ${bestSize.width}x${bestSize.height} (target: ${imageMaxWidth})`)
-        return {
-          url: `${serviceId}/full/${bestSize.width},${bestSize.height}/0/default.jpg`,
-          width: bestSize.width,
-          height: bestSize.height
-        }
-      }
-    }
-
-    // Fall back to requesting our target width
-    const scaledHeight = Math.round(imageMaxWidth * fullHeight / fullWidth)
-    return {
-      url: `${serviceId}/full/${imageMaxWidth},/0/default.jpg`,
-      width: imageMaxWidth,
-      height: scaledHeight
-    }
-  }
-
-  // No service, use static URL with original dimensions
-  return {
-    url: resource.id || resource['@id'],
-    width: fullWidth,
-    height: fullHeight
-  }
-}
-
-const setImageMaxWidth = (width) => {
-  imageMaxWidth = width // number for max width, or 'full' for original size
-}
 
 let url, lastStart
 let scheduler = null
@@ -321,7 +206,7 @@ const prefetchNextBatch = (manifestUrl, start) => {
     canvases.forEach((item, itemIndex) => {
       setTimeout(async () => {
         const resource = getImageResource(item, isV3)
-        const { url: imageUrl, width, height } = await getImageUrlAndSize(resource)
+        const { url: imageUrl, width, height } = await imageService.getImageUrlAndSize(resource, imageMaxWidth)
 
         const canvas = document.createElement('canvas')
         canvas.width = width
@@ -357,26 +242,10 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
           if (data.words.length > MIN_WORDS_FOUND) {
             ctx.drawImage(image, 0, 0)
-            const cutBoxes = []
-            const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
-            if (cutFrequency === 1) {
-              for (const word of data.words) {
-                const { bbox } = word
-                const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
-                if (wordFrequency === 1) {
-                  cutBoxes.push({ ...bbox })
-                  const boxwidth = bbox.x1 - bbox.x0
-                  const boxheight = bbox.y1 - bbox.y0
-                  ctx.save()
-                  ctx.globalCompositeOperation = 'destination-out'
-                  ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
-                  ctx.fill()
-                  ctx.restore()
-                  ctx.globalCompositeOperation = 'source-over'
-                  ctx.strokeStyle = 'black'
-                  ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
-                }
-              }
+            let cutBoxes = []
+            if (shouldCutPage(CUT_FREQUENCY)) {
+              cutBoxes = selectWordsForCutout(data.words, WORD_FREQUENCY)
+              applyCutouts(ctx, cutBoxes)
             }
             canvasCutData.set(canvas, {
               resource,
@@ -457,7 +326,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
   canvases.forEach((item, itemIndex) => {
     setTimeout(async () => {
       const resource = getImageResource(item, isV3)
-      const { url: imageUrl, width, height } = await getImageUrlAndSize(resource)
+      const { url: imageUrl, width, height } = await imageService.getImageUrlAndSize(resource, imageMaxWidth)
 
       const canvas = document.createElement('canvas')
       canvas.width = width
@@ -506,27 +375,10 @@ const bookRender = async (url, start, usePrefetched = false) => {
         // Only draw the image if there are at least some OCR detections
         if (data.words.length > MIN_WORDS_FOUND) {
           ctx.drawImage(image, 0, 0)
-          const cutBoxes = []
-
-          const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
-          if (cutFrequency === 1) {
-            for (const word of data.words) {
-              const { bbox } = word
-              const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
-              if (wordFrequency === 1) {
-                cutBoxes.push({ ...bbox })
-                const boxwidth = bbox.x1 - bbox.x0
-                const boxheight = bbox.y1 - bbox.y0
-                ctx.save()
-                ctx.globalCompositeOperation = 'destination-out'
-                ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
-                ctx.fill()
-                ctx.restore()
-                ctx.globalCompositeOperation = 'source-over'
-                ctx.strokeStyle = 'black'
-                ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
-              }
-            }
+          let cutBoxes = []
+          if (shouldCutPage(CUT_FREQUENCY)) {
+            cutBoxes = selectWordsForCutout(data.words, WORD_FREQUENCY)
+            applyCutouts(ctx, cutBoxes)
           }
           canvasCutData.set(canvas, {
             resource,
@@ -596,39 +448,6 @@ const revealPreviousPage = () => {
   updateStatus()
 }
 
-// Get full-size image URL from IIIF resource
-// Returns { url, width, height } - uses largest pre-computed size or explicit dimensions
-const getFullSizeImageUrl = async (resource) => {
-  const service = resource.service
-  const serviceId = service && getServiceId(service)
-  const fullWidth = resource.width
-  const fullHeight = resource.height
-
-  if (serviceId) {
-    // Check info.json for the largest available pre-computed size
-    const info = await fetchImageInfo(serviceId)
-    if (info?.sizes && info.sizes.length > 0) {
-      const largest = info.sizes.reduce((a, b) => a.width > b.width ? a : b)
-      return {
-        url: `${serviceId}/full/${largest.width},${largest.height}/0/default.jpg`,
-        width: largest.width,
-        height: largest.height
-      }
-    }
-    // Fall back to requesting explicit full dimensions
-    return {
-      url: `${serviceId}/full/${fullWidth},${fullHeight}/0/default.jpg`,
-      width: fullWidth,
-      height: fullHeight
-    }
-  }
-  return {
-    url: resource.id || resource['@id'],
-    width: fullWidth,
-    height: fullHeight
-  }
-}
-
 // Load an image and return a promise
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image()
@@ -637,25 +456,6 @@ const loadImage = (url) => new Promise((resolve, reject) => {
   img.onerror = reject
   img.src = url
 })
-
-// Apply cutouts to a canvas context at a given scale
-const applyCutouts = (ctx, cutBoxes, scale) => {
-  for (const bbox of cutBoxes) {
-    const x = bbox.x0 * scale
-    const y = bbox.y0 * scale
-    const boxwidth = (bbox.x1 - bbox.x0) * scale
-    const boxheight = (bbox.y1 - bbox.y0) * scale
-    ctx.save()
-    ctx.globalCompositeOperation = 'destination-out'
-    ctx.rect(x, y, boxwidth, boxheight)
-    ctx.fill()
-    ctx.restore()
-    ctx.globalCompositeOperation = 'source-over'
-    ctx.strokeStyle = 'black'
-    ctx.lineWidth = scale // Scale stroke width proportionally
-    ctx.strokeRect(x, y, boxwidth, boxheight)
-  }
-}
 
 const downloadCurrentImage = async () => {
   const canvases = [...main.querySelectorAll('canvas')]
@@ -691,7 +491,7 @@ const downloadCurrentImage = async () => {
     // Use the TOP layer to determine output dimensions
     const topCanvas = canvases[canvases.length - 1]
     const topCutData = canvasCutData.get(topCanvas)
-    const { width: fullWidth, height: fullHeight } = await getFullSizeImageUrl(topCutData.resource)
+    const { width: fullWidth, height: fullHeight } = await imageService.getFullSizeImageUrl(topCutData.resource)
 
     // Create composite canvas at full size
     const composite = document.createElement('canvas')
@@ -705,7 +505,7 @@ const downloadCurrentImage = async () => {
       const { resource, cutBoxes, previewWidth } = cutData
 
       // Fetch full-size image
-      const { url: fullSizeUrl } = await getFullSizeImageUrl(resource)
+      const { url: fullSizeUrl } = await imageService.getFullSizeImageUrl(resource)
       const img = await loadImage(fullSizeUrl)
 
       // Create a temporary canvas for this layer
@@ -748,6 +548,7 @@ prevButton.addEventListener('click', revealPreviousPage)
 downloadButton.addEventListener('click', downloadCurrentImage)
 homeButton.addEventListener('click', (e) => {
   e.preventDefault()
+  history.pushState({}, '', '/')
   splash.classList.remove('hidden')
   browseNav.classList.add('hidden')
   document.querySelector('main').innerHTML = ''

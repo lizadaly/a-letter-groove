@@ -1,0 +1,65 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@type": "sc:Manifest",
+  "@id": "https://example.org/iiif/book1/manifest",
+  "label": "Book of Hours",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://example.org/iiif/book1/canvas/p1",
+          "@type": "sc:Canvas",
+          "label": "Page 1",
+          "height": 1000,
+          "width": 750,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://example.org/iiif/book1/res/page1.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 750,
+                "height": 1000,
+                "service": {
+                  "@context": "http://iiif.io/api/image/2/context.json",
+                  "@id": "https://example.org/iiif/book1/page1",
+                  "profile": "http://iiif.io/api/image/2/level1.json"
+                }
+              },
+              "on": "https://example.org/iiif/book1/canvas/p1"
+            }
+          ]
+        },
+        {
+          "@id": "https://example.org/iiif/book1/canvas/p2",
+          "@type": "sc:Canvas",
+          "label": "Page 2",
+          "height": 1000,
+          "width": 750,
+          "images": [
+            {
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://example.org/iiif/book1/res/page2.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 750,
+                "height": 1000,
+                "service": {
+                  "@context": "http://iiif.io/api/image/2/context.json",
+                  "@id": "https://example.org/iiif/book1/page2",
+                  "profile": "http://iiif.io/api/image/2/level1.json"
+                }
+              },
+              "on": "https://example.org/iiif/book1/canvas/p2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
