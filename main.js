@@ -5,6 +5,10 @@ const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
 const SCHEDULER_WORKERS = 3
 let imageMaxWidth = 600 // Max width for fetched images (uses IIIF Image API)
 
+// Store cut data per canvas for full-size download
+// Maps canvas -> { resource, cutBoxes, previewWidth, previewHeight }
+const canvasCutData = new WeakMap()
+
 // Construct a sized image URL using IIIF Image API, or fall back to full URL
 const getImageUrl = (resource) => {
   const service = resource.service
@@ -190,12 +194,14 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
           if (data.words.length > MIN_WORDS_FOUND) {
             ctx.drawImage(image, 0, 0)
+            const cutBoxes = []
             const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
             if (cutFrequency === 1) {
               for (const word of data.words) {
                 const { bbox } = word
                 const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
                 if (wordFrequency === 1) {
+                  cutBoxes.push({ ...bbox })
                   const boxwidth = bbox.x1 - bbox.x0
                   const boxheight = bbox.y1 - bbox.y0
                   ctx.save()
@@ -209,6 +215,12 @@ const prefetchNextBatch = (manifestUrl, start) => {
                 }
               }
             }
+            canvasCutData.set(canvas, {
+              resource,
+              cutBoxes,
+              previewWidth: width,
+              previewHeight: height
+            })
             completedCanvases[itemIndex] = canvas
           }
 
@@ -331,6 +343,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
         // Only draw the image if there are at least some OCR detections
         if (data.words.length > MIN_WORDS_FOUND) {
           ctx.drawImage(image, 0, 0)
+          const cutBoxes = []
 
           const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
           if (cutFrequency === 1) {
@@ -338,6 +351,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
               const { bbox } = word
               const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
               if (wordFrequency === 1) {
+                cutBoxes.push({ ...bbox })
                 const boxwidth = bbox.x1 - bbox.x0
                 const boxheight = bbox.y1 - bbox.y0
                 ctx.save()
@@ -351,6 +365,12 @@ const bookRender = async (url, start, usePrefetched = false) => {
               }
             }
           }
+          canvasCutData.set(canvas, {
+            resource,
+            cutBoxes,
+            previewWidth: width,
+            previewHeight: height
+          })
           completedCanvases[itemIndex] = canvas
         }
 
@@ -413,32 +433,128 @@ const revealPreviousPage = () => {
   updateStatus()
 }
 
-const downloadCurrentImage = () => {
+// Get full-size image URL from IIIF resource
+const getFullSizeImageUrl = (resource) => {
+  const service = resource.service
+  if (service && service['@id']) {
+    return `${service['@id']}/full/full/0/default.jpg`
+  }
+  return resource['@id']
+}
+
+// Load an image and return a promise
+const loadImage = (url) => new Promise((resolve, reject) => {
+  const img = new Image()
+  img.crossOrigin = 'Anonymous'
+  img.onload = () => resolve(img)
+  img.onerror = reject
+  img.src = url
+})
+
+// Apply cutouts to a canvas context at a given scale
+const applyCutouts = (ctx, cutBoxes, scale) => {
+  for (const bbox of cutBoxes) {
+    const x = bbox.x0 * scale
+    const y = bbox.y0 * scale
+    const boxwidth = (bbox.x1 - bbox.x0) * scale
+    const boxheight = (bbox.y1 - bbox.y0) * scale
+    ctx.save()
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.rect(x, y, boxwidth, boxheight)
+    ctx.fill()
+    ctx.restore()
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.strokeStyle = 'black'
+    ctx.lineWidth = scale // Scale stroke width proportionally
+    ctx.strokeRect(x, y, boxwidth, boxheight)
+  }
+}
+
+const downloadCurrentImage = async () => {
   const canvases = [...main.querySelectorAll('canvas')]
   if (canvases.length === 0) return
 
-  // Get dimensions from the bottom canvas (they should all be the same size)
-  const bottomCanvas = canvases[0]
-  const { width, height } = bottomCanvas
-
-  // Create a composite canvas
-  const composite = document.createElement('canvas')
-  composite.width = width
-  composite.height = height
-  const ctx = composite.getContext('2d')
-
-  // Draw canvases from bottom to top (first in DOM is bottom of stack visually)
-  for (const canvas of canvases) {
-    ctx.drawImage(canvas, 0, 0)
+  // Check if we have cut data for all canvases
+  const allHaveCutData = canvases.every(c => canvasCutData.has(c))
+  if (!allHaveCutData) {
+    // Fallback to preview-size download if cut data missing
+    const bottomCanvas = canvases[0]
+    const { width, height } = bottomCanvas
+    const composite = document.createElement('canvas')
+    composite.width = width
+    composite.height = height
+    const ctx = composite.getContext('2d')
+    for (const canvas of canvases) {
+      ctx.drawImage(canvas, 0, 0)
+    }
+    const title = manifestCache?.label || 'a-letter-groove'
+    const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+    const link = document.createElement('a')
+    link.download = `${safeTitle}-page-${currentPage}.png`
+    link.href = composite.toDataURL('image/png')
+    link.click()
+    return
   }
 
-  // Download the composite
-  const title = manifestCache?.label || 'a-letter-groove'
-  const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-  const link = document.createElement('a')
-  link.download = `${safeTitle}-page-${currentPage}.png`
-  link.href = composite.toDataURL('image/png')
-  link.click()
+  // Show loading state
+  downloadButton.disabled = true
+  downloadButton.textContent = 'Loading full-size...'
+
+  try {
+    // Use the TOP layer's dimensions (last in DOM order) since that's what we're viewing
+    const topCanvas = canvases[canvases.length - 1]
+    const topCutData = canvasCutData.get(topCanvas)
+    const fullWidth = topCutData.resource.width
+    const fullHeight = topCutData.resource.height
+
+    // Create composite canvas at full size
+    const composite = document.createElement('canvas')
+    composite.width = fullWidth
+    composite.height = fullHeight
+    const ctx = composite.getContext('2d')
+
+    // Process canvases from bottom to top (DOM order)
+    for (const canvas of canvases) {
+      const cutData = canvasCutData.get(canvas)
+      const { resource, cutBoxes, previewWidth } = cutData
+
+      // Fetch full-size image
+      const fullSizeUrl = getFullSizeImageUrl(resource)
+      const img = await loadImage(fullSizeUrl)
+
+      // Create a temporary canvas for this layer
+      const layerCanvas = document.createElement('canvas')
+      layerCanvas.width = fullWidth
+      layerCanvas.height = fullHeight
+      const layerCtx = layerCanvas.getContext('2d')
+
+      // Draw the full-size image, scaling to fit the composite dimensions
+      layerCtx.drawImage(img, 0, 0, fullWidth, fullHeight)
+
+      // Calculate scale factor from preview to composite size
+      const scale = fullWidth / previewWidth
+
+      // Apply scaled cutouts
+      applyCutouts(layerCtx, cutBoxes, scale)
+
+      // Composite this layer onto the main canvas
+      ctx.drawImage(layerCanvas, 0, 0)
+    }
+
+    // Download the composite
+    const title = manifestCache?.label || 'a-letter-groove'
+    const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+    const link = document.createElement('a')
+    link.download = `${safeTitle}-page-${currentPage}-full.png`
+    link.href = composite.toDataURL('image/png')
+    link.click()
+  } catch (err) {
+    console.error('Failed to generate full-size image:', err)
+    alert('Failed to generate full-size image. Try again or check console for details.')
+  } finally {
+    downloadButton.disabled = false
+    downloadButton.textContent = 'Download'
+  }
 }
 
 nextButton.addEventListener('click', revealNextPage)
