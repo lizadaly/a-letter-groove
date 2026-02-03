@@ -8,6 +8,9 @@ let url, lastStart
 let scheduler = null
 let pagesCompleted = 0
 let totalPages = 0
+let prefetchedCanvases = []
+let prefetchInProgress = false
+let manifestCache = null
 
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
@@ -45,16 +48,122 @@ main.querySelector('form').addEventListener('submit', async (e) => {
   bookRender(url, 0)
 })
 
-const bookRender = async (url, start) => {
-  document.querySelector('form').style.display = 'none'
+const getManifest = async (url) => {
+  if (manifestCache) return manifestCache
   const req = await fetch(url)
-  const manifest = await req.json()
-  console.log(manifest)
+  manifestCache = await req.json()
+  console.log(manifestCache)
+  return manifestCache
+}
+
+const prefetchNextBatch = (manifestUrl, start) => {
+  if (prefetchInProgress) return
+  prefetchInProgress = true
+  prefetchedCanvases = []
+
+  getManifest(manifestUrl).then(manifest => {
+    const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
+    if (canvases.length === 0) {
+      prefetchInProgress = false
+      return
+    }
+
+    console.log(`Prefetching batch starting from ${start}...`)
+    let prefetchCompleted = 0
+
+    for (const item of canvases) {
+      setTimeout(() => {
+        const imageUrl = item.images[0].resource["@id"]
+        const { width, height } = item.images[0].resource
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width || 1600
+        canvas.height = height || 2000
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+        const image = new Image(width, height)
+        image.crossOrigin = 'Anonymous'
+
+        image.addEventListener('error', () => {
+          prefetchCompleted++
+          if (prefetchCompleted === canvases.length) {
+            console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
+            prefetchInProgress = false
+          }
+        })
+
+        image.addEventListener('load', async () => {
+          let data
+          try {
+            const result = await scheduler.addJob('recognize', imageUrl)
+            data = result.data
+          } catch (err) {
+            prefetchCompleted++
+            if (prefetchCompleted === canvases.length) {
+              console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
+              prefetchInProgress = false
+            }
+            return
+          }
+
+          if (data.words.length > MIN_WORDS_FOUND) {
+            ctx.drawImage(image, 0, 0)
+            const cutFrequency = Math.floor(Math.random() * CUT_FREQUENCY) + 1
+            if (cutFrequency === 1) {
+              for (const word of data.words) {
+                const { bbox } = word
+                const wordFrequency = Math.floor(Math.random() * WORD_FREQUENCY) + 1
+                if (wordFrequency === 1) {
+                  const boxwidth = bbox.x1 - bbox.x0
+                  const boxheight = bbox.y1 - bbox.y0
+                  ctx.save()
+                  ctx.globalCompositeOperation = 'destination-out'
+                  ctx.rect(bbox.x0, bbox.y0, boxwidth, boxheight)
+                  ctx.fill()
+                  ctx.restore()
+                  ctx.globalCompositeOperation = 'source-over'
+                  ctx.strokeStyle = 'black'
+                  ctx.strokeRect(bbox.x0, bbox.y0, boxwidth, boxheight)
+                }
+              }
+            }
+            prefetchedCanvases.push(canvas)
+          }
+
+          prefetchCompleted++
+          if (prefetchCompleted === canvases.length) {
+            console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
+            prefetchInProgress = false
+          }
+        })
+
+        image.src = imageUrl
+      }, 300)
+    }
+  })
+}
+
+const bookRender = async (url, start, usePrefetched = false) => {
+  document.querySelector('form').style.display = 'none'
+  const manifest = await getManifest(url)
+
+  // Use prefetched canvases if available
+  if (usePrefetched && prefetchedCanvases.length > 0) {
+    console.log(`Using ${prefetchedCanvases.length} prefetched canvases`)
+    for (const canvas of prefetchedCanvases) {
+      main.insertBefore(canvas, main.firstChild)
+    }
+    document.querySelector('button').classList.remove('hidden')
+    prefetchedCanvases = []
+    prefetchNextBatch(url, start + BATCH_SIZE)
+    return
+  }
 
   const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
   totalPages = canvases.length
   pagesCompleted = 0
   let firstCanvasRendered = false
+  let prefetchStarted = false
   showLoading(`Processing 0/${totalPages}...`)
 
   for (const item of canvases) {
@@ -157,6 +266,11 @@ const bookRender = async (url, start) => {
           if (!firstCanvasRendered) {
             firstCanvasRendered = true
             hideLoading()
+            // Start prefetching next batch after first canvas renders
+            if (!prefetchStarted) {
+              prefetchStarted = true
+              prefetchNextBatch(url, start + BATCH_SIZE)
+            }
           }
         }
       })
@@ -167,12 +281,14 @@ const bookRender = async (url, start) => {
 document.querySelector('button').addEventListener('click', () => {
   const canvas = main.querySelector('canvas:last-of-type')
   canvas.parentNode.removeChild(canvas)
-  console.log([...main.querySelectorAll('canvas')].length)
+  const remaining = [...main.querySelectorAll('canvas')].length
+  console.log(remaining)
 
-  if ([...main.querySelectorAll('canvas')].length < 5) {
+  if (remaining < 5) {
     lastStart = lastStart + BATCH_SIZE
+    const hasPrefetched = prefetchedCanvases.length > 0
 
-    console.log(`Triggering new batch starting from ${lastStart}`)
-    bookRender(url, lastStart)
+    console.log(`Triggering new batch starting from ${lastStart}${hasPrefetched ? ' (using prefetched)' : ''}`)
+    bookRender(url, lastStart, hasPrefetched)
   }
 })
