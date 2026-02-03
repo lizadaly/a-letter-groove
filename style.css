@@ -293,7 +293,7 @@ a:hover {
 
 /* Main app area */
 main {
-  /* Inherits from original */
+  padding-top: 60px; /* Space for fixed nav bar */
 }
 
 /* Hidden utility */
@@ -301,26 +301,6 @@ main {
   display: none !important;
 }
 
-/* Reveal button */
-#next {
-  position: absolute;
-  padding: 1rem 1.5rem;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1rem;
-  font-style: italic;
-  cursor: pointer;
-  border: 1px solid var(--ink);
-  background: var(--cream);
-  color: var(--ink);
-  transition: background 0.2s ease;
-  /* Uncomment this for screenshots
-  opacity: 0;
-  */
-}
-
-#next:hover {
-  background: var(--cream-dark);
-}
 
 /* Canvas styles */
 canvas {
@@ -350,18 +330,167 @@ canvas {
   z-index: 1000;
 }
 
-/* Page counter */
-#page-counter {
+/* Browse Navigation Toolbar */
+.browse-nav {
   position: fixed;
-  top: 10px;
-  right: 10px;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
   background: var(--cream);
-  border: 1px solid var(--cream-dark);
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  border-bottom: 1px solid var(--cream-dark);
+  box-shadow: 0 2px 12px rgba(44, 36, 22, 0.06);
+  z-index: 1000;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--cream-dark);
+  margin: 0 0.5rem;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.875rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--cream-dark);
+  border-color: var(--cream-dark);
+}
+
+.nav-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.nav-btn svg {
+  flex-shrink: 0;
+  stroke: currentColor;
+  transition: transform 0.15s ease;
+}
+
+#prev-btn:hover:not(:disabled) svg {
+  transform: translateX(-2px);
+}
+
+#next-btn:hover:not(:disabled) svg {
+  transform: translateX(2px);
+}
+
+.nav-btn-download:hover:not(:disabled) svg {
+  transform: translateY(2px);
+}
+
+/* Page indicator */
+.page-indicator {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
   font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 0.8rem;
   color: var(--ink-faded);
-  z-index: 100;
+  background: white;
+  border: 1px solid var(--cream-dark);
+  min-width: 5.5rem;
+  justify-content: center;
+}
+
+.page-current {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.page-sep {
+  color: var(--cream-dark);
+  margin: 0 0.125rem;
+}
+
+.page-total {
+  color: var(--ink-faded);
+}
+
+.page-ready {
+  color: var(--ink-faded);
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--cream-dark);
+}
+
+.page-ready:empty {
+  display: none;
+}
+
+/* Status display */
+.nav-status {
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-faded);
+  gap: 1rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.status-item:empty {
+  display: none;
+}
+
+.status-processing {
+  color: var(--accent);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-processing:not(:empty) {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Hide nav button text on small screens */
+@media (max-width: 500px) {
+  .nav-btn-text {
+    display: none;
+  }
+
+  .nav-btn {
+    padding: 0.5rem;
+  }
+
+  .browse-nav {
+    padding: 0.5rem 1rem;
+  }
 }
 
 /* Responsive */

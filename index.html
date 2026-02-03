@@ -68,8 +68,44 @@
 
     <main>
     </main>
-    <button class="hidden" id="next">Reveal next page</button>
-    <div id="page-counter" class="hidden"></div>
+
+    <nav class="browse-nav hidden" id="browse-nav">
+      <div class="nav-group nav-pagination">
+        <button class="nav-btn" id="prev-btn" disabled aria-label="Previous page">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          <span class="nav-btn-text">Previous</span>
+        </button>
+        <div class="page-indicator" id="page-counter">
+          <span class="page-current">1</span>
+          <span class="page-sep">/</span>
+          <span class="page-total">—</span>
+          <span class="page-ready"></span>
+        </div>
+        <button class="nav-btn" id="next-btn" aria-label="Next page">
+          <span class="nav-btn-text">Next</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-group nav-status" id="nav-status">
+        <span class="status-item status-processing" id="status-processing"></span>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-group nav-actions">
+        <button class="nav-btn nav-btn-download" id="download-btn" aria-label="Download current image">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="nav-btn-text">Download</span>
+        </button>
+      </div>
+    </nav>
     <div id="loading" class="hidden">
       <span id="loading-text">Initializing OCR...</span>
     </div>

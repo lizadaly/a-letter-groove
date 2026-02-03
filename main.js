@@ -1,5 +1,5 @@
 const BATCH_SIZE = 20
-const MIN_WORDS_FOUND = 100
+const MIN_WORDS_FOUND = 0
 const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
 const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
 const SCHEDULER_WORKERS = 3
@@ -8,20 +8,60 @@ let url, lastStart
 let scheduler = null
 let prefetchedCanvases = []
 let prefetchInProgress = false
+let prefetchBatchStart = 0
 let batchInProgress = false
+let waitingForPrefetch = false
 let manifestCache = null
 let currentPage = 0
 let totalManifestPages = 0
+let maxCachedPages = 0
 
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
-const pageCounterEl = document.querySelector('#page-counter')
-const nextButton = document.querySelector('#next')
+const browseNav = document.querySelector('#browse-nav')
+const pageCurrentEl = document.querySelector('.page-current')
+const pageTotalEl = document.querySelector('.page-total')
+const pageReadyEl = document.querySelector('.page-ready')
+const prevButton = document.querySelector('#prev-btn')
+const nextButton = document.querySelector('#next-btn')
+const downloadButton = document.querySelector('#download-btn')
+const statusProcessingEl = document.querySelector('#status-processing')
+
+// Track removed canvases for "previous" navigation
+let removedCanvases = []
+
+// Status tracking
+let currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
+let currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
+
+const updateStatus = () => {
+  const canvasCount = main.querySelectorAll('canvas').length
+  maxCachedPages = Math.max(maxCachedPages, canvasCount)
+
+  // Show max pages ready (only increases)
+  pageReadyEl.textContent = maxCachedPages > 0 ? `${maxCachedPages} ready` : ''
+
+  // Show OCR or prefetch progress with current page number
+  if (currentOcrProgress.total > 0 && currentOcrProgress.completed < currentOcrProgress.total) {
+    const pageNum = currentOcrProgress.startPage + currentOcrProgress.completed + 1
+    statusProcessingEl.textContent = `OCRing page ${pageNum}`
+  } else if (prefetchInProgress && currentPrefetchProgress.total > 0) {
+    const pageNum = currentPrefetchProgress.startPage + currentPrefetchProgress.completed + 1
+    statusProcessingEl.textContent = `fetching page ${pageNum}`
+  } else if (waitingForPrefetch) {
+    statusProcessingEl.textContent = 'waiting...'
+  } else {
+    statusProcessingEl.textContent = ''
+  }
+}
 
 const updatePageCounter = () => {
   if (totalManifestPages > 0) {
-    pageCounterEl.textContent = `Page ${currentPage} of ${totalManifestPages}`
-    pageCounterEl.classList.remove('hidden')
+    pageCurrentEl.textContent = currentPage
+    pageTotalEl.textContent = totalManifestPages
+    browseNav.classList.remove('hidden')
+    // Enable/disable prev button based on history
+    prevButton.disabled = removedCanvases.length === 0
   }
 }
 
@@ -73,6 +113,7 @@ const getManifest = async (url) => {
 const prefetchNextBatch = (manifestUrl, start) => {
   if (prefetchInProgress) return
   prefetchInProgress = true
+  prefetchBatchStart = start
   prefetchedCanvases = []
 
   getManifest(manifestUrl).then(manifest => {
@@ -84,6 +125,8 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
     console.log(`Prefetching batch starting from ${start}...`)
     let prefetchCompleted = 0
+    currentPrefetchProgress = { completed: 0, total: canvases.length, startPage: start }
+    updateStatus()
 
     for (const item of canvases) {
       setTimeout(() => {
@@ -100,9 +143,13 @@ const prefetchNextBatch = (manifestUrl, start) => {
 
         image.addEventListener('error', () => {
           prefetchCompleted++
+          currentPrefetchProgress.completed = prefetchCompleted
+          updateStatus()
           if (prefetchCompleted === canvases.length) {
             console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
             prefetchInProgress = false
+            currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
+            updateStatus()
           }
         })
 
@@ -113,9 +160,13 @@ const prefetchNextBatch = (manifestUrl, start) => {
             data = result.data
           } catch (err) {
             prefetchCompleted++
+            currentPrefetchProgress.completed = prefetchCompleted
+            updateStatus()
             if (prefetchCompleted === canvases.length) {
               console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
               prefetchInProgress = false
+              currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
+              updateStatus()
             }
             return
           }
@@ -145,9 +196,21 @@ const prefetchNextBatch = (manifestUrl, start) => {
           }
 
           prefetchCompleted++
+          currentPrefetchProgress.completed = prefetchCompleted
+          updateStatus()
           if (prefetchCompleted === canvases.length) {
             console.log(`Prefetched ${prefetchedCanvases.length} canvases`)
             prefetchInProgress = false
+            currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
+            updateStatus()
+
+            // If we were waiting for prefetch, use the canvases now
+            if (waitingForPrefetch) {
+              waitingForPrefetch = false
+              // Reset lastStart to match the prefetched batch
+              lastStart = prefetchBatchStart
+              bookRender(url, prefetchBatchStart, true)
+            }
           }
         })
 
@@ -170,7 +233,15 @@ const bookRender = async (url, start, usePrefetched = false) => {
     }
     nextButton.classList.remove('hidden')
     prefetchedCanvases = []
+    updateStatus()
     prefetchNextBatch(url, start + BATCH_SIZE)
+    return
+  }
+
+  // If prefetch is in progress, wait for it instead of competing for scheduler
+  if (prefetchInProgress) {
+    waitingForPrefetch = true
+    updateStatus()
     return
   }
 
@@ -180,7 +251,9 @@ const bookRender = async (url, start, usePrefetched = false) => {
   let pagesCompleted = 0
   let firstCanvasRendered = false
   let prefetchStarted = false
+  currentOcrProgress = { completed: 0, total: totalPages, startPage: start }
   showLoading(`Processing 0/${totalPages}...`)
+  updateStatus()
 
   for (const item of canvases) {
 
@@ -200,15 +273,18 @@ const bookRender = async (url, start, usePrefetched = false) => {
 
       const image = new Image(width, height)
       image.crossOrigin = 'Anonymous'
-      image.src = imageUrl
 
       image.addEventListener('error', () => {
         console.warn(`Failed to load image: ${imageUrl}`)
         pagesCompleted++
+        currentOcrProgress.completed = pagesCompleted
+        updateStatus()
         if (!firstCanvasRendered) {
           if (pagesCompleted === totalPages) {
             hideLoading()
             batchInProgress = false
+            currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
+            updateStatus()
           } else {
             showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
           }
@@ -224,10 +300,14 @@ const bookRender = async (url, start, usePrefetched = false) => {
         } catch (err) {
           console.warn(`OCR failed for ${imageUrl}:`, err.message)
           pagesCompleted++
+          currentOcrProgress.completed = pagesCompleted
+          updateStatus()
           if (!firstCanvasRendered) {
             if (pagesCompleted === totalPages) {
               hideLoading()
               batchInProgress = false
+              currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
+              updateStatus()
             } else {
               showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
             }
@@ -236,10 +316,14 @@ const bookRender = async (url, start, usePrefetched = false) => {
         }
 
         pagesCompleted++
+        currentOcrProgress.completed = pagesCompleted
+        updateStatus()
         if (!firstCanvasRendered) {
           if (pagesCompleted === totalPages) {
             hideLoading()
             batchInProgress = false
+            currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
+            updateStatus()
           } else {
             showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
           }
@@ -280,14 +364,17 @@ const bookRender = async (url, start, usePrefetched = false) => {
             }
           }
           main.insertBefore(canvas, main.firstChild)
-          nextButton.classList.remove('hidden')
+          browseNav.classList.remove('hidden')
+          updateStatus()
 
           if (!firstCanvasRendered) {
             firstCanvasRendered = true
             hideLoading()
             batchInProgress = false
+            currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
             currentPage = 1
             updatePageCounter()
+            updateStatus()
             // Start prefetching next batch after first canvas renders
             if (!prefetchStarted) {
               prefetchStarted = true
@@ -296,6 +383,8 @@ const bookRender = async (url, start, usePrefetched = false) => {
           }
         }
       })
+
+      image.src = imageUrl
     }, 300)
   }
 }
@@ -304,28 +393,54 @@ const revealNextPage = () => {
   const canvas = main.querySelector('canvas:last-of-type')
   if (!canvas) return
 
+  // Store removed canvas for "previous" navigation
   canvas.parentNode.removeChild(canvas)
+  removedCanvases.push(canvas)
   currentPage++
   updatePageCounter()
+  updateStatus()
 
   const remaining = [...main.querySelectorAll('canvas')].length
-  console.log(remaining)
 
-  if (remaining < 5) {
+  if (remaining < 5 && !waitingForPrefetch && !batchInProgress) {
     lastStart = lastStart + BATCH_SIZE
     const hasPrefetched = prefetchedCanvases.length > 0
-
-    console.log(`Triggering new batch starting from ${lastStart}${hasPrefetched ? ' (using prefetched)' : ''}`)
     bookRender(url, lastStart, hasPrefetched)
   }
 }
 
+const revealPreviousPage = () => {
+  if (removedCanvases.length === 0) return
+
+  const canvas = removedCanvases.pop()
+  main.appendChild(canvas)
+  currentPage--
+  updatePageCounter()
+  updateStatus()
+}
+
+const downloadCurrentImage = () => {
+  const canvas = main.querySelector('canvas:last-of-type')
+  if (!canvas) return
+
+  // Create a temporary link and trigger download
+  const link = document.createElement('a')
+  link.download = `a-letter-groove-page-${currentPage}.png`
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+}
+
 nextButton.addEventListener('click', revealNextPage)
+prevButton.addEventListener('click', revealPreviousPage)
+downloadButton.addEventListener('click', downloadCurrentImage)
 
 document.addEventListener('keydown', (e) => {
-  if (nextButton.classList.contains('hidden')) return
+  if (browseNav.classList.contains('hidden')) return
   if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'ArrowDown') {
     e.preventDefault()
     revealNextPage()
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    revealPreviousPage()
   }
 })
