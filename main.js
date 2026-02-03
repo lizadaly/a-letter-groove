@@ -6,10 +6,9 @@ const SCHEDULER_WORKERS = 3
 
 let url, lastStart
 let scheduler = null
-let pagesCompleted = 0
-let totalPages = 0
 let prefetchedCanvases = []
 let prefetchInProgress = false
+let batchInProgress = false
 let manifestCache = null
 let currentPage = 0
 let totalManifestPages = 0
@@ -159,6 +158,8 @@ const prefetchNextBatch = (manifestUrl, start) => {
 }
 
 const bookRender = async (url, start, usePrefetched = false) => {
+  if (batchInProgress) return
+
   const manifest = await getManifest(url)
 
   // Use prefetched canvases if available
@@ -173,9 +174,10 @@ const bookRender = async (url, start, usePrefetched = false) => {
     return
   }
 
+  batchInProgress = true
   const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
-  totalPages = canvases.length
-  pagesCompleted = 0
+  const totalPages = canvases.length
+  let pagesCompleted = 0
   let firstCanvasRendered = false
   let prefetchStarted = false
   showLoading(`Processing 0/${totalPages}...`)
@@ -206,6 +208,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
         if (!firstCanvasRendered) {
           if (pagesCompleted === totalPages) {
             hideLoading()
+            batchInProgress = false
           } else {
             showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
           }
@@ -224,6 +227,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
           if (!firstCanvasRendered) {
             if (pagesCompleted === totalPages) {
               hideLoading()
+              batchInProgress = false
             } else {
               showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
             }
@@ -235,6 +239,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
         if (!firstCanvasRendered) {
           if (pagesCompleted === totalPages) {
             hideLoading()
+            batchInProgress = false
           } else {
             showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
           }
@@ -280,6 +285,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
           if (!firstCanvasRendered) {
             firstCanvasRendered = true
             hideLoading()
+            batchInProgress = false
             currentPage = 1
             updatePageCounter()
             // Start prefetching next batch after first canvas renders
