@@ -2,15 +2,31 @@ const BATCH_SIZE = 20
 const MIN_WORDS_FOUND = 100
 const CUT_FREQUENCY = 1 // One out of every n pages will on average be cut
 const WORD_FREQUENCY = 3 // One of of every n words will on average be cut
+const SCHEDULER_WORKERS = 3
 
 let url, lastStart
+let scheduler = null
+
+const initScheduler = async () => {
+  if (scheduler) return scheduler
+  scheduler = Tesseract.createScheduler()
+  for (let i = 0; i < SCHEDULER_WORKERS; i++) {
+    const worker = Tesseract.createWorker()
+    await worker.load()
+    await worker.loadLanguage('eng')
+    await worker.initialize('eng')
+    scheduler.addWorker(worker)
+  }
+  return scheduler
+}
 
 const main = document.querySelector('main')
-main.querySelector('form').addEventListener('submit', (e) => {
+main.querySelector('form').addEventListener('submit', async (e) => {
   e.preventDefault()
   const form = e.target
   url = form['url'].value
   lastStart = 0
+  await initScheduler()
   bookRender(url, 0)
 })
 
@@ -42,17 +58,14 @@ const bookRender = async (url, start) => {
 
       image.addEventListener('load', async () => {
         console.log(`OCRing ${imageUrl}...`)
-        const worker = Tesseract.createWorker()
-        await worker.load()
-        await worker.loadLanguage('eng')
-        await worker.initialize('eng')
-
-        const {
-          data
-        } = await worker.recognize(imageUrl)
-
-        worker.terminate()
-        // console.log(`Got ${data.words.length} words for this page...`)
+        let data
+        try {
+          const result = await scheduler.addJob('recognize', imageUrl)
+          data = result.data
+        } catch (err) {
+          console.warn(`OCR failed for ${imageUrl}:`, err.message)
+          return
+        }
 
         // Only draw the image if there are at least some OCR detections
         if (data.words.length > MIN_WORDS_FOUND) {

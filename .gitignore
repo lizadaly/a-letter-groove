@@ -113,3 +113,6 @@ output
 
 # Don't commit PDF output as it tends to be too large
 *.pdf
+
+# Local planning docs
+PLAN.md
