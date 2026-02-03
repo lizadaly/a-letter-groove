@@ -9,23 +9,69 @@
     <script type="module" src="main.js"></script>
   </head>
   <body>
-    <main>
+    <div class="splash" id="splash">
+      <div class="floating-fragments">
+        <img src="examples/owl.png" alt="" class="fragment fragment-1" aria-hidden="true">
+        <img src="examples/flowers1.png" alt="" class="fragment fragment-2" aria-hidden="true">
+        <img src="examples/dickenson1.png" alt="" class="fragment fragment-3" aria-hidden="true">
+        <img src="examples/lettie.png" alt="" class="fragment fragment-4" aria-hidden="true">
+      </div>
 
-
-
-        <form>
+      <div class="splash-content">
+        <header class="splash-header">
           <h1>A Letter Groove</h1>
-          <p>Add a URL to an <a href="https://iiif.io/get-started/how-iiif-works/">IIIF manifest v2</a> from a library or archive.</p>
-          <p>After you submit the form, be patient while images load. <br>Press "Reveal next page" to move through the document.</p>
-          <input name="url" type="text" value="https://iiif.lib.harvard.edu/manifests/drs:433026349" size="45" type="url">
-          <small><a href="https://github.com/lizadaly/a-letter-groove">What is this?</a></small>
+          <p class="tagline">Cut-page artists' books from digitized archives</p>
+        </header>
+
+        <div class="how-it-works">
+          <div class="step">
+            <span class="step-num">1</span>
+            <p>Paste a <a href="https://iiif.io/get-started/how-iiif-works/" target="_blank" rel="noopener">IIIF manifest</a> URL from any library or archive</p>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <p>OCR identifies words on each scanned page</p>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <p>Words are randomly cut out, revealing layers beneath</p>
+          </div>
+        </div>
+
+        <form id="manifest-form">
+          <div class="input-group">
+            <label for="url-input">IIIF Manifest URL</label>
+            <input
+              id="url-input"
+              name="url"
+              type="url"
+              value="https://iiif.lib.harvard.edu/manifests/drs:433026349"
+              placeholder="https://example.org/iiif/manifest.json"
+              required
+            >
+          </div>
+          <button type="submit">
+            <span>Begin</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
         </form>
 
+        <footer class="splash-footer">
+          <a href="https://github.com/lizadaly/a-letter-groove">View source on GitHub</a>
+          <span class="divider">·</span>
+          <span>A <a href="https://nanogenmo.github.io/">NaNoGenMo</a> 2022 project</span>
+        </footer>
+      </div>
+    </div>
+
+    <main>
     </main>
     <button class="hidden" id="next">Reveal next page</button>
     <div id="page-counter" class="hidden"></div>
     <div id="loading" class="hidden">
-      <span id="loading-text">Initialising OCR...</span>
+      <span id="loading-text">Initializing OCR...</span>
     </div>
 
   </body>

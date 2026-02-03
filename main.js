@@ -17,7 +17,7 @@ let totalManifestPages = 0
 const loadingEl = document.querySelector('#loading')
 const loadingText = document.querySelector('#loading-text')
 const pageCounterEl = document.querySelector('#page-counter')
-const nextButton = document.querySelector('button')
+const nextButton = document.querySelector('#next')
 
 const updatePageCounter = () => {
   if (totalManifestPages > 0) {
@@ -49,12 +49,15 @@ const initScheduler = async () => {
 }
 
 const main = document.querySelector('main')
-main.querySelector('form').addEventListener('submit', async (e) => {
+const splash = document.querySelector('#splash')
+const form = document.querySelector('#manifest-form')
+
+form.addEventListener('submit', async (e) => {
   e.preventDefault()
-  const form = e.target
   url = form['url'].value
   lastStart = 0
-  showLoading('Initialising OCR...')
+  splash.classList.add('hidden')
+  showLoading('Initializing OCR...')
   await initScheduler()
   bookRender(url, 0)
 })
@@ -156,7 +159,6 @@ const prefetchNextBatch = (manifestUrl, start) => {
 }
 
 const bookRender = async (url, start, usePrefetched = false) => {
-  document.querySelector('form').style.display = 'none'
   const manifest = await getManifest(url)
 
   // Use prefetched canvases if available
@@ -165,7 +167,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
     for (const canvas of prefetchedCanvases) {
       main.insertBefore(canvas, main.firstChild)
     }
-    document.querySelector('button').classList.remove('hidden')
+    nextButton.classList.remove('hidden')
     prefetchedCanvases = []
     prefetchNextBatch(url, start + BATCH_SIZE)
     return
@@ -273,7 +275,7 @@ const bookRender = async (url, start, usePrefetched = false) => {
             }
           }
           main.insertBefore(canvas, main.firstChild)
-          document.querySelector('button').classList.remove('hidden')
+          nextButton.classList.remove('hidden')
 
           if (!firstCanvasRendered) {
             firstCanvasRendered = true

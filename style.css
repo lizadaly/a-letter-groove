@@ -1,52 +1,330 @@
+/* Variables */
+:root {
+  --cream: #fafafa;
+  --cream-dark: #e5e5e5;
+  --ink: #2c2416;
+  --ink-light: #5c5040;
+  --ink-faded: #8a8070;
+  --accent: #8b4513;
+  --accent-hover: #a0522d;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: Helvetica, Arial, sans-serif;
-  color: gray;
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
 }
-h1 {
-  padding: 25vh 0 2rem 0;
-  font-size: 30px;
-  margin: auto;
-  text-align: center;
-  font-weight: normal;
-}
-p {
-  text-align: center;
-  margin: auto;
-  font-size: 20px;
-  padding: 20px;
-}
-small {
-  text-align: center;
-  margin: auto;
-  padding: 20px;
-  display: block;
-}
-input {
-  border: 1px solid gray;
-  font-size: 30px;
-}
-input[type=text] {
-  display: block;
-  margin: auto;
-  text-align: center;
-  color: gray;
-  padding: 10px;
 
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-button {
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Splash Screen */
+.splash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+/* Floating Example Images */
+.floating-fragments {
   position: absolute;
-  padding: 1rem;
-  /* Uncomment this for screenshots
-  opacity: 0;
-  */
-
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
+
+.fragment {
+  position: absolute;
+  opacity: 0.15;
+  filter: grayscale(30%);
+  transition: opacity 0.6s ease;
+}
+
+.splash:hover .fragment {
+  opacity: 0.25;
+}
+
+.fragment-1 {
+  top: 5%;
+  left: -5%;
+  width: 280px;
+  transform: rotate(-8deg);
+  animation: float1 20s ease-in-out infinite;
+}
+
+.fragment-2 {
+  top: 10%;
+  right: -3%;
+  width: 200px;
+  transform: rotate(5deg);
+  animation: float2 25s ease-in-out infinite;
+}
+
+.fragment-3 {
+  bottom: 5%;
+  left: 2%;
+  width: 180px;
+  transform: rotate(3deg);
+  animation: float3 22s ease-in-out infinite;
+}
+
+.fragment-4 {
+  bottom: 10%;
+  right: 5%;
+  width: 220px;
+  transform: rotate(-4deg);
+  animation: float4 18s ease-in-out infinite;
+}
+
+@keyframes float1 {
+  0%, 100% { transform: rotate(-8deg) translate(0, 0); }
+  50% { transform: rotate(-6deg) translate(10px, 15px); }
+}
+
+@keyframes float2 {
+  0%, 100% { transform: rotate(5deg) translate(0, 0); }
+  50% { transform: rotate(7deg) translate(-15px, 10px); }
+}
+
+@keyframes float3 {
+  0%, 100% { transform: rotate(3deg) translate(0, 0); }
+  50% { transform: rotate(1deg) translate(8px, -12px); }
+}
+
+@keyframes float4 {
+  0%, 100% { transform: rotate(-4deg) translate(0, 0); }
+  50% { transform: rotate(-2deg) translate(-10px, -8px); }
+}
+
+/* Splash Content */
+.splash-content {
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
+  box-shadow:
+    0 1px 3px rgba(44, 36, 22, 0.04),
+    0 8px 40px rgba(44, 36, 22, 0.08);
+  padding: 3rem;
+}
+
+/* Header */
+.splash-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--cream-dark);
+}
+
+.splash-header h1 {
+  font-size: 2.25rem;
+  font-weight: normal;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.75rem 0;
+  padding: 0;
+  color: var(--ink);
+}
+
+.tagline {
+  font-size: 1rem;
+  color: var(--ink-faded);
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* How It Works */
+.how-it-works {
+  margin-bottom: 2.5rem;
+}
+
+.step {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.step:last-child {
+  margin-bottom: 0;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  color: var(--ink-faded);
+  border: 1px solid var(--cream-dark);
+  border-radius: 50%;
+}
+
+.step p {
+  margin: 0;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ink-light);
+  text-align: left;
+}
+
+/* Form */
+#manifest-form {
+  margin-bottom: 2rem;
+}
+
+.input-group {
+  margin-bottom: 1rem;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faded);
+  margin-bottom: 0.5rem;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 0.85rem;
+  border: 1px solid var(--cream-dark);
+  background: white;
+  color: var(--ink);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
+}
+
+.input-group input::placeholder {
+  color: var(--ink-faded);
+}
+
+#manifest-form button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  font-style: italic;
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+#manifest-form button:hover {
+  background: var(--ink-light);
+}
+
+#manifest-form button:active {
+  transform: translateY(1px);
+}
+
+#manifest-form button svg {
+  transition: transform 0.2s ease;
+}
+
+#manifest-form button:hover svg {
+  transform: translateX(3px);
+}
+
+/* Footer */
+.splash-footer {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ink-faded);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--cream-dark);
+}
+
+.splash-footer a {
+  color: var(--ink-faded);
+}
+
+.splash-footer a:hover {
+  color: var(--accent);
+}
+
+.splash-footer .divider {
+  margin: 0 0.5rem;
+}
+
+/* Hide splash when processing */
+.splash.hidden {
+  display: none !important;
+}
+
+/* Main app area */
+main {
+  /* Inherits from original */
+}
+
+/* Hidden utility */
 .hidden {
   display: none !important;
 }
+
+/* Reveal button */
+#next {
+  position: absolute;
+  padding: 1rem 1.5rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  font-style: italic;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  background: var(--cream);
+  color: var(--ink);
+  transition: background 0.2s ease;
+  /* Uncomment this for screenshots
+  opacity: 0;
+  */
+}
+
+#next:hover {
+  background: var(--cream-dark);
+}
+
+/* Canvas styles */
 canvas {
   position: absolute;
-
   /* These settings are best for screenshots
   top: 0;
   left: 0;
@@ -55,25 +333,52 @@ canvas {
   /* Disable this for screenshots */
   max-width: 1200px;
 }
+
+/* Loading indicator */
 #loading {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
   padding: 2rem 3rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  font-size: 18px;
+  box-shadow: 0 8px 40px rgba(44, 36, 22, 0.15);
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--ink-light);
   z-index: 1000;
 }
+
+/* Page counter */
 #page-counter {
   position: fixed;
   top: 10px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
   padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 14px;
+  font-size: 0.85rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  color: var(--ink-faded);
   z-index: 100;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .splash {
+    padding: 1rem;
+  }
+
+  .splash-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .splash-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .fragment {
+    display: none;
+  }
 }
