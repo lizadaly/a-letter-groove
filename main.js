@@ -41,15 +41,104 @@ const getServiceId = (service) => {
   return svc?.id || svc?.['@id']
 }
 
+// Extract a string label from manifest (v2 uses string, v3 uses language map)
+const getManifestLabel = (manifest) => {
+  const label = manifest?.label
+  if (!label) return null
+  if (typeof label === 'string') return label
+  // v3 language map: { "en": ["Title"], "none": ["Title"] }
+  const values = label.en || label.none || Object.values(label)[0]
+  return Array.isArray(values) ? values[0] : values
+}
+
+// Cache for info.json responses
+const infoJsonCache = new Map()
+
+// Fetch info.json for a service and return available sizes
+const fetchImageInfo = async (serviceId) => {
+  if (infoJsonCache.has(serviceId)) {
+    return infoJsonCache.get(serviceId)
+  }
+  try {
+    const response = await fetch(`${serviceId}/info.json`)
+    if (!response.ok) {
+      infoJsonCache.set(serviceId, null)
+      return null
+    }
+    const info = await response.json()
+    infoJsonCache.set(serviceId, info)
+    return info
+  } catch (err) {
+    console.warn(`Failed to fetch info.json for ${serviceId}:`, err.message)
+    infoJsonCache.set(serviceId, null)
+    return null
+  }
+}
+
+// Find the best pre-computed size closest to target width
+const findBestSize = (sizes, targetWidth) => {
+  if (!sizes || sizes.length === 0) return null
+
+  // Sort by width
+  const sorted = [...sizes].sort((a, b) => a.width - b.width)
+
+  // Find sizes at or above target
+  const atOrAbove = sorted.filter(s => s.width >= targetWidth)
+  if (atOrAbove.length > 0) {
+    // Return smallest size that's >= target
+    return atOrAbove[0]
+  }
+
+  // All sizes are below target, return the largest available
+  return sorted[sorted.length - 1]
+}
+
 // Construct a sized image URL using IIIF Image API, or fall back to full URL
-const getImageUrl = (resource) => {
+// Returns { url, width, height } with actual dimensions of the image
+const getImageUrlAndSize = async (resource) => {
   const service = resource.service
   const serviceId = service && getServiceId(service)
+  const fullWidth = resource.width
+  const fullHeight = resource.height
+
   if (serviceId) {
-    const size = imageMaxWidth === 'full' ? 'full' : `${imageMaxWidth},`
-    return `${serviceId}/full/${size}/0/default.jpg`
+    if (imageMaxWidth === 'full') {
+      return {
+        url: `${serviceId}/full/full/0/default.jpg`,
+        width: fullWidth,
+        height: fullHeight
+      }
+    }
+
+    // Try to find a pre-computed size close to our target
+    const info = await fetchImageInfo(serviceId)
+    if (info?.sizes) {
+      const bestSize = findBestSize(info.sizes, imageMaxWidth)
+      if (bestSize) {
+        console.log(`Using pre-computed size ${bestSize.width}x${bestSize.height} (target: ${imageMaxWidth})`)
+        return {
+          url: `${serviceId}/full/${bestSize.width},${bestSize.height}/0/default.jpg`,
+          width: bestSize.width,
+          height: bestSize.height
+        }
+      }
+    }
+
+    // Fall back to requesting our target width
+    const scaledHeight = Math.round(imageMaxWidth * fullHeight / fullWidth)
+    return {
+      url: `${serviceId}/full/${imageMaxWidth},/0/default.jpg`,
+      width: imageMaxWidth,
+      height: scaledHeight
+    }
   }
-  return resource.id || resource['@id']
+
+  // No service, use static URL with original dimensions
+  return {
+    url: resource.id || resource['@id'],
+    width: fullWidth,
+    height: fullHeight
+  }
 }
 
 const setImageMaxWidth = (width) => {
@@ -230,11 +319,9 @@ const prefetchNextBatch = (manifestUrl, start) => {
     updateStatus()
 
     canvases.forEach((item, itemIndex) => {
-      setTimeout(() => {
+      setTimeout(async () => {
         const resource = getImageResource(item, isV3)
-        const imageUrl = getImageUrl(resource)
-        const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
-        const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
+        const { url: imageUrl, width, height } = await getImageUrlAndSize(resource)
 
         const canvas = document.createElement('canvas')
         canvas.width = width
@@ -368,11 +455,9 @@ const bookRender = async (url, start, usePrefetched = false) => {
   updateStatus()
 
   canvases.forEach((item, itemIndex) => {
-    setTimeout(() => {
+    setTimeout(async () => {
       const resource = getImageResource(item, isV3)
-      const imageUrl = getImageUrl(resource)
-      const width = imageMaxWidth === 'full' ? resource.width : imageMaxWidth
-      const height = imageMaxWidth === 'full' ? resource.height : Math.round(imageMaxWidth * resource.height / resource.width)
+      const { url: imageUrl, width, height } = await getImageUrlAndSize(resource)
 
       const canvas = document.createElement('canvas')
       canvas.width = width
@@ -512,13 +597,36 @@ const revealPreviousPage = () => {
 }
 
 // Get full-size image URL from IIIF resource
-const getFullSizeImageUrl = (resource) => {
+// Returns { url, width, height } - uses largest pre-computed size or explicit dimensions
+const getFullSizeImageUrl = async (resource) => {
   const service = resource.service
   const serviceId = service && getServiceId(service)
+  const fullWidth = resource.width
+  const fullHeight = resource.height
+
   if (serviceId) {
-    return `${serviceId}/full/full/0/default.jpg`
+    // Check info.json for the largest available pre-computed size
+    const info = await fetchImageInfo(serviceId)
+    if (info?.sizes && info.sizes.length > 0) {
+      const largest = info.sizes.reduce((a, b) => a.width > b.width ? a : b)
+      return {
+        url: `${serviceId}/full/${largest.width},${largest.height}/0/default.jpg`,
+        width: largest.width,
+        height: largest.height
+      }
+    }
+    // Fall back to requesting explicit full dimensions
+    return {
+      url: `${serviceId}/full/${fullWidth},${fullHeight}/0/default.jpg`,
+      width: fullWidth,
+      height: fullHeight
+    }
   }
-  return resource.id || resource['@id']
+  return {
+    url: resource.id || resource['@id'],
+    width: fullWidth,
+    height: fullHeight
+  }
 }
 
 // Load an image and return a promise
@@ -566,7 +674,7 @@ const downloadCurrentImage = async () => {
     for (const canvas of canvases) {
       ctx.drawImage(canvas, 0, 0)
     }
-    const title = manifestCache?.label || 'a-letter-groove'
+    const title = getManifestLabel(manifestCache) || 'a-letter-groove'
     const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
     const link = document.createElement('a')
     link.download = `${safeTitle}-page-${currentPage}.png`
@@ -580,11 +688,10 @@ const downloadCurrentImage = async () => {
   downloadButton.textContent = 'Loading full-size...'
 
   try {
-    // Use the TOP layer's dimensions (last in DOM order) since that's what we're viewing
+    // Use the TOP layer to determine output dimensions
     const topCanvas = canvases[canvases.length - 1]
     const topCutData = canvasCutData.get(topCanvas)
-    const fullWidth = topCutData.resource.width
-    const fullHeight = topCutData.resource.height
+    const { width: fullWidth, height: fullHeight } = await getFullSizeImageUrl(topCutData.resource)
 
     // Create composite canvas at full size
     const composite = document.createElement('canvas')
@@ -598,7 +705,7 @@ const downloadCurrentImage = async () => {
       const { resource, cutBoxes, previewWidth } = cutData
 
       // Fetch full-size image
-      const fullSizeUrl = getFullSizeImageUrl(resource)
+      const { url: fullSizeUrl } = await getFullSizeImageUrl(resource)
       const img = await loadImage(fullSizeUrl)
 
       // Create a temporary canvas for this layer
@@ -621,7 +728,7 @@ const downloadCurrentImage = async () => {
     }
 
     // Download the composite
-    const title = manifestCache?.label || 'a-letter-groove'
+    const title = getManifestLabel(manifestCache) || 'a-letter-groove'
     const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
     const link = document.createElement('a')
     link.download = `${safeTitle}-page-${currentPage}-full.png`
