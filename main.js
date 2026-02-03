@@ -6,6 +6,20 @@ const SCHEDULER_WORKERS = 3
 
 let url, lastStart
 let scheduler = null
+let pagesCompleted = 0
+let totalPages = 0
+
+const loadingEl = document.querySelector('#loading')
+const loadingText = document.querySelector('#loading-text')
+
+const showLoading = (text) => {
+  loadingText.textContent = text
+  loadingEl.classList.remove('hidden')
+}
+
+const hideLoading = () => {
+  loadingEl.classList.add('hidden')
+}
 
 const initScheduler = async () => {
   if (scheduler) return scheduler
@@ -26,6 +40,7 @@ main.querySelector('form').addEventListener('submit', async (e) => {
   const form = e.target
   url = form['url'].value
   lastStart = 0
+  showLoading('Initialising OCR...')
   await initScheduler()
   bookRender(url, 0)
 })
@@ -36,7 +51,13 @@ const bookRender = async (url, start) => {
   const manifest = await req.json()
   console.log(manifest)
 
-  for (const item of manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)) {
+  const canvases = manifest.sequences[0].canvases.slice(start, start + BATCH_SIZE)
+  totalPages = canvases.length
+  pagesCompleted = 0
+  let firstCanvasRendered = false
+  showLoading(`Processing 0/${totalPages}...`)
+
+  for (const item of canvases) {
 
     setTimeout(() => {
       const imageUrl = item.images[0].resource["@id"]
@@ -56,6 +77,18 @@ const bookRender = async (url, start) => {
       image.crossOrigin = 'Anonymous'
       image.src = imageUrl
 
+      image.addEventListener('error', () => {
+        console.warn(`Failed to load image: ${imageUrl}`)
+        pagesCompleted++
+        if (!firstCanvasRendered) {
+          if (pagesCompleted === totalPages) {
+            hideLoading()
+          } else {
+            showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
+          }
+        }
+      })
+
       image.addEventListener('load', async () => {
         console.log(`OCRing ${imageUrl}...`)
         let data
@@ -64,7 +97,24 @@ const bookRender = async (url, start) => {
           data = result.data
         } catch (err) {
           console.warn(`OCR failed for ${imageUrl}:`, err.message)
+          pagesCompleted++
+          if (!firstCanvasRendered) {
+            if (pagesCompleted === totalPages) {
+              hideLoading()
+            } else {
+              showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
+            }
+          }
           return
+        }
+
+        pagesCompleted++
+        if (!firstCanvasRendered) {
+          if (pagesCompleted === totalPages) {
+            hideLoading()
+          } else {
+            showLoading(`Processing ${pagesCompleted}/${totalPages}...`)
+          }
         }
 
         // Only draw the image if there are at least some OCR detections
@@ -103,6 +153,11 @@ const bookRender = async (url, start) => {
           }
           main.insertBefore(canvas, main.firstChild)
           document.querySelector('button').classList.remove('hidden')
+
+          if (!firstCanvasRendered) {
+            firstCanvasRendered = true
+            hideLoading()
+          }
         }
       })
     }, 300)
