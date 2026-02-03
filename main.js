@@ -460,8 +460,10 @@ const downloadCurrentImage = () => {
   }
 
   // Download the composite
+  const title = manifestCache?.label || 'a-letter-groove'
+  const safeTitle = title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
   const link = document.createElement('a')
-  link.download = `a-letter-groove-page-${currentPage}.png`
+  link.download = `${safeTitle}-page-${currentPage}.png`
   link.href = composite.toDataURL('image/png')
   link.click()
 }

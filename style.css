@@ -291,9 +291,23 @@ a:hover {
   display: none !important;
 }
 
-/* Main app area */
+/* Main app area - Gallery view */
 main {
-  padding-top: 60px; /* Space for fixed nav bar */
+  min-height: 100vh;
+  padding: 100px 2rem 4rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  background: var(--cream);
+}
+
+/* The book stage - where the magic happens */
+.book-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Hidden utility */
@@ -301,17 +315,30 @@ main {
   display: none !important;
 }
 
-
-/* Canvas styles */
+/* Canvas styles - Stacked archival pages */
 canvas {
   position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+
   /* These settings are best for screenshots
   top: 0;
   left: 0;
   right: 0;
+  transform: none;
   */
-  /* Disable this for screenshots */
+
   max-width: 1200px;
+}
+
+/* Quick fade in for new canvases */
+@keyframes page-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+canvas {
+  animation: page-appear 0.15s ease-out both;
 }
 
 /* Loading indicator */
