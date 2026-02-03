@@ -561,6 +561,24 @@ homeButton.addEventListener('click', (e) => {
   splash.classList.remove('hidden')
   browseNav.classList.add('hidden')
   document.querySelector('main').innerHTML = ''
+
+  // Reset all state variables
+  url = undefined
+  lastStart = undefined
+  prefetchedCanvases = []
+  prefetchInProgress = false
+  prefetchBatchStart = 0
+  batchInProgress = false
+  waitingForPrefetch = false
+  manifestCache = null
+  currentPage = 0
+  totalManifestPages = 0
+  removedCanvases = []
+  currentOcrProgress = { completed: 0, total: 0, startPage: 0 }
+  currentPrefetchProgress = { completed: 0, total: 0, startPage: 0 }
+
+  // Clear the form input
+  form['url'].value = ''
 })
 
 document.addEventListener('keydown', (e) => {
