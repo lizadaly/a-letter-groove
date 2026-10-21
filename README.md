@@ -14,7 +14,7 @@ The result is a layered visual composition in the style of cut-page artists' boo
 
 ## Using the app
 
-**[Launch the app](https://lizadaly.github.io/a-letter-groove/)** — includes example books to get started.
+**[Launch the app](https://lizadaly.com/a-letter-groove/)** — includes example books to get started.
 
 IIIF (International Image Interoperability Framework) is an API for describing image sequences, used by libraries, museums, and archives worldwide. Both IIIF Presentation API v2 and v3 manifests are supported.
 
