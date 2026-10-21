@@ -557,7 +557,7 @@ prevButton.addEventListener('click', revealPreviousPage)
 downloadButton.addEventListener('click', downloadCurrentImage)
 homeButton.addEventListener('click', (e) => {
   e.preventDefault()
-  history.pushState({}, '', '/')
+  history.pushState({}, '', window.location.pathname)
   splash.classList.remove('hidden')
   browseNav.classList.add('hidden')
   document.querySelector('main').innerHTML = ''
